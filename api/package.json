@@ -1,0 +1,17 @@
+{
+  "name": "kpis-api",
+  "version": "1.0.0",
+  "description": "API de KPIs para DiDi Food Oaxaca",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "type": "commonjs",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^16.0.0",
+    "express": "^5.2.1",
+    "pg": "^8.21.0"
+  }
+}

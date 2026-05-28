@@ -6,15 +6,26 @@
 import { Platform } from 'react-native';
 
 export const Brand = {
-  bg: '#F8FAFC',
-  card: '#FFFFFF',
-  text: '#1E293B',
-  subtext: '#64748B',
-  accent: '#FF6B35',
-  green: '#16a34a',
-  red: '#dc2626',
-  blue: '#2563eb',
-  border: '#E2E8F0',
+  bg:          '#F1F5F9',
+  card:        '#FFFFFF',
+  cardOrange:  '#FFF4ED',
+  cardBlue:    '#EFF6FF',
+  cardGreen:   '#F0FDF4',
+  cardPurple:  '#F5F3FF',
+  cardYellow:  '#FEFCE8',
+  headerDark:  '#1E293B',
+  text:        '#1E293B',
+  subtext:     '#64748B',
+  accent:      '#FF6B35',
+  accentDark:  '#CC4E1A',
+  green:       '#16a34a',
+  greenLight:  '#86EFAC',
+  red:         '#dc2626',
+  redLight:    '#FECACA',
+  blue:        '#2563eb',
+  blueLight:   '#BFDBFE',
+  purple:      '#7C3AED',
+  border:      '#E2E8F0',
 };
 
 export const Colors = {
