@@ -1,9 +1,10 @@
 import { useEffect, useState, useCallback } from 'react';
-import { ScrollView, StyleSheet, Text, View, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
+import { ScrollView, StyleSheet, Text, View, ActivityIndicator, TouchableOpacity, Alert, TextInput, Modal } from 'react-native';
 import { PieChart } from 'react-native-gifted-charts';
 import { Ionicons } from '@expo/vector-icons';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Brand } from '@/constants/theme';
 import { API, fetchJSON } from '@/constants/api';
 
@@ -41,10 +42,51 @@ export default function MasScreen() {
   const [porCocina,    setPorCocina]    = useState<any[]>([]);
   const [conductores,  setConductores]  = useState<any>(null);
   const [reactivacion, setReactivacion] = useState<any[]>([]);
-  const [loading,      setLoading]      = useState(true);
-  const [generando,    setGenerando]    = useState<string | null>(null);
-  const [error,        setError]        = useState('');
-  const [seccion,      setSeccion]      = useState<'productos' | 'usuarios' | 'reporte'>('productos');
+  const [topVendidos,  setTopVendidos]  = useState<any[]>([]);
+  const [rfm,          setRfm]          = useState<any[]>([]);
+  const [adquisicion,  setAdquisicion]  = useState<any[]>([]);
+  const [loading,             setLoading]             = useState(true);
+  const [generando,           setGenerando]           = useState<string | null>(null);
+  const [error,               setError]               = useState('');
+  const [seccion,             setSeccion]             = useState<'productos' | 'usuarios' | 'reporte'>('productos');
+  const [cantidadPremium,     setCantidadPremium]     = useState(8);
+  const [cantidadPremiumInput,setCantidadPremiumInput]= useState('8');
+  const [modalPremium,        setModalPremium]        = useState(false);
+  const [cantidadCat,         setCantidadCat]         = useState(0);
+  const [cantidadCatInput,    setCantidadCatInput]    = useState('');
+  const [modalCat,            setModalCat]            = useState(false);
+  const [cantidadIngCocina,   setCantidadIngCocina]   = useState(8);
+  const [cantidadIngInput,    setCantidadIngInput]    = useState('8');
+  const [modalIngCocina,      setModalIngCocina]      = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem('mas_premium_cantidad').then(v => {
+      if (v) { setCantidadPremium(parseInt(v)); setCantidadPremiumInput(v); }
+    });
+    AsyncStorage.getItem('mas_cat_cantidad').then(v => {
+      if (v) { setCantidadCat(parseInt(v)); setCantidadCatInput(v); }
+    });
+    AsyncStorage.getItem('mas_ingcocina_cantidad').then(v => {
+      if (v) { setCantidadIngCocina(parseInt(v)); setCantidadIngInput(v); }
+    });
+  }, []);
+
+  const aplicarPremium = () => {
+    const n = parseInt(cantidadPremiumInput);
+    if (n > 0) { AsyncStorage.setItem('mas_premium_cantidad', String(n)); setCantidadPremium(n); }
+    setModalPremium(false);
+  };
+  const aplicarCat = () => {
+    const n = parseInt(cantidadCatInput);
+    if (n > 0) { AsyncStorage.setItem('mas_cat_cantidad', String(n)); setCantidadCat(n); }
+    else { AsyncStorage.removeItem('mas_cat_cantidad'); setCantidadCat(0); }
+    setModalCat(false);
+  };
+  const aplicarIngCocina = () => {
+    const n = parseInt(cantidadIngInput);
+    if (n > 0) { AsyncStorage.setItem('mas_ingcocina_cantidad', String(n)); setCantidadIngCocina(n); }
+    setModalIngCocina(false);
+  };
 
   const cargar = useCallback(() => {
     setLoading(true); setError('');
@@ -61,11 +103,17 @@ export default function MasScreen() {
       fetchJSON(`${API}/restaurantes/por-cocina`),
       fetchJSON(`${API}/kpi/conductores`),
       fetchJSON(`${API}/conductores/reactivacion`),
-    ]).then(([mp, cat, prem, ing, ped, ingr, cancel, tiempo, rest, coc, cond, reac]) => {
+      fetchJSON(`${API}/productos/top-vendidos?limit=10`).catch(() => []),
+      fetchJSON(`${API}/usuarios/segmentos`).catch(() => []),
+      fetchJSON(`${API}/usuarios/adquisicion`).catch(() => []),
+    ]).then(([mp, cat, prem, ing, ped, ingr, cancel, tiempo, rest, coc, cond, reac, tv, rfmData, adq]) => {
       setMetodosPago(mp); setCategorias(cat); setPremium(prem); setIngCocina(ing);
       setKpisResumen({ pedidos: ped, ingresos: ingr, cancelaciones: cancel, tiempo });
       setTopRest(rest); setPorCocina(coc); setConductores(cond);
       setReactivacion(reac.slice(0, 10));
+      setTopVendidos(Array.isArray(tv) ? tv : []);
+      setRfm(Array.isArray(rfmData) ? rfmData : []);
+      setAdquisicion(Array.isArray(adq) ? adq : []);
       setLoading(false);
     }).catch(() => { setError('Error cargando datos'); setLoading(false); });
   }, []);
@@ -421,13 +469,61 @@ export default function MasScreen() {
       {/* ── PRODUCTOS ── */}
       {seccion === 'productos' && (
         <>
+          {/* Top productos vendidos */}
+          {topVendidos.length > 0 && (
+            <View style={[styles.card, { backgroundColor: Brand.cardGreen }]}>
+              <View style={styles.seccionHeader}>
+                <Ionicons name="flame-outline" size={18} color={Brand.green} />
+                <Text style={[styles.seccionTitulo, { color: Brand.green }]}>Top productos mas vendidos</Text>
+              </View>
+              <Text style={styles.sub}>Por unidades vendidas en pedidos entregados</Text>
+              {topVendidos.map((p, i) => (
+                <View key={i} style={styles.prodRow}>
+                  <View style={[styles.precioBadge, {
+                    backgroundColor: i < 3 ? '#DCFCE7' : Brand.card,
+                    marginRight: 8, minWidth: 28, alignItems: 'center',
+                  }]}>
+                    <Text style={{ fontSize: 12, fontWeight: '800', color: i < 3 ? '#166534' : Brand.subtext }}>
+                      #{p.posicion}
+                    </Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.prodNombre} numberOfLines={1}>{p.producto}</Text>
+                    <Text style={styles.prodSub}>{p.restaurante} · {p.categoria}</Text>
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: Brand.green }}>
+                      {p.unidades_vendidas.toLocaleString()} uds
+                    </Text>
+                    <Text style={styles.sub}>${(p.ingreso_total / 1000).toFixed(1)}k ingresos</Text>
+                  </View>
+                </View>
+              ))}
+              <View style={[styles.alertaRow, { borderLeftColor: Brand.green, backgroundColor: Brand.card }]}>
+                <View style={styles.alertaLabel}>
+                  <Text style={styles.alertaLabelText}>ACCION SUGERIDA</Text>
+                </View>
+                <Text style={[styles.alertaTexto, { color: Brand.green }]}>
+                  {topVendidos[0]?.producto} lidera con {topVendidos[0]?.unidades_vendidas?.toLocaleString()} unidades —
+                  asegurar disponibilidad permanente y considerar destacarlo en la portada de la app
+                </Text>
+              </View>
+            </View>
+          )}
+
           <View style={[styles.card, { backgroundColor: Brand.cardBlue }]}>
-            <View style={styles.seccionHeader}>
-              <Ionicons name="star-outline" size={18} color={Brand.blue} />
-              <Text style={[styles.seccionTitulo, { color: Brand.blue }]}>Candidatos a seccion Premium</Text>
+            <View style={[styles.seccionHeader, { justifyContent: 'space-between' }]}>
+              <View style={styles.seccionHeader}>
+                <Ionicons name="star-outline" size={18} color={Brand.blue} />
+                <Text style={[styles.seccionTitulo, { color: Brand.blue }]}>Candidatos Premium</Text>
+              </View>
+              <TouchableOpacity onPress={() => setModalPremium(true)} style={[styles.chipFiltro, { borderColor: Brand.blue }]}>
+                <Ionicons name="options-outline" size={13} color={Brand.blue} />
+                <Text style={[styles.chipFiltroTxt, { color: Brand.blue }]}>Ver: {cantidadPremium}</Text>
+              </TouchableOpacity>
             </View>
             <Text style={styles.sub}>Productos con precio mayor a $200 MXN</Text>
-            {premium.slice(0, 8).map((p, i) => (
+            {premium.slice(0, cantidadPremium).map((p, i) => (
               <View key={i} style={styles.prodRow}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.prodNombre} numberOfLines={1}>{p.producto}</Text>
@@ -441,11 +537,17 @@ export default function MasScreen() {
           </View>
 
           <View style={[styles.card, { backgroundColor: Brand.cardYellow }]}>
-            <View style={styles.seccionHeader}>
-              <Ionicons name="grid-outline" size={18} color={Brand.accent} />
-              <Text style={[styles.seccionTitulo, { color: Brand.accent }]}>Analisis por categoria</Text>
+            <View style={[styles.seccionHeader, { justifyContent: 'space-between' }]}>
+              <View style={styles.seccionHeader}>
+                <Ionicons name="grid-outline" size={18} color={Brand.accent} />
+                <Text style={[styles.seccionTitulo, { color: Brand.accent }]}>Analisis por categoria</Text>
+              </View>
+              <TouchableOpacity onPress={() => { setCantidadCatInput(cantidadCat > 0 ? String(cantidadCat) : String(categorias.length)); setModalCat(true); }} style={styles.chipFiltro}>
+                <Ionicons name="options-outline" size={13} color={Brand.accent} />
+                <Text style={styles.chipFiltroTxt}>{cantidadCat > 0 ? `Ver: ${cantidadCat}` : `Todas (${categorias.length})`}</Text>
+              </TouchableOpacity>
             </View>
-            {categorias.map((c, i) => (
+            {(cantidadCat > 0 ? categorias.slice(0, cantidadCat) : categorias).map((c, i) => (
               <View key={i} style={styles.catRow}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.catNombre}>{c.categoria}</Text>
@@ -468,11 +570,17 @@ export default function MasScreen() {
           </View>
 
           <View style={[styles.card, { backgroundColor: Brand.cardGreen }]}>
-            <View style={styles.seccionHeader}>
-              <Ionicons name="trending-up-outline" size={18} color={Brand.green} />
-              <Text style={[styles.seccionTitulo, { color: Brand.green }]}>Ingresos por tipo de cocina</Text>
+            <View style={[styles.seccionHeader, { justifyContent: 'space-between' }]}>
+              <View style={styles.seccionHeader}>
+                <Ionicons name="trending-up-outline" size={18} color={Brand.green} />
+                <Text style={[styles.seccionTitulo, { color: Brand.green }]}>Ingresos por cocina</Text>
+              </View>
+              <TouchableOpacity onPress={() => setModalIngCocina(true)} style={[styles.chipFiltro, { borderColor: Brand.green }]}>
+                <Ionicons name="options-outline" size={13} color={Brand.green} />
+                <Text style={[styles.chipFiltroTxt, { color: Brand.green }]}>Ver: {cantidadIngCocina}</Text>
+              </TouchableOpacity>
             </View>
-            {ingCocina.slice(0, 8).map((r, i) => (
+            {ingCocina.slice(0, cantidadIngCocina).map((r, i) => (
               <View key={i} style={styles.ingRow}>
                 <Text style={styles.ingNombre} numberOfLines={1}>{r.tipo_cocina.substring(0, 9)}</Text>
                 <View style={styles.ingBar}>
@@ -499,6 +607,83 @@ export default function MasScreen() {
       {/* ── USUARIOS ── */}
       {seccion === 'usuarios' && (
         <>
+          {/* Segmentacion RFM */}
+          {rfm.length > 0 && (
+            <View style={[styles.card, { backgroundColor: Brand.cardBlue }]}>
+              <View style={styles.seccionHeader}>
+                <Ionicons name="people-circle-outline" size={18} color={Brand.blue} />
+                <Text style={[styles.seccionTitulo, { color: Brand.blue }]}>Segmentacion RFM de usuarios</Text>
+              </View>
+              <Text style={styles.sub}>Recencia · Frecuencia · Monetario</Text>
+              {rfm.map((seg, i) => {
+                const segColor: Record<string, string> = {
+                  'Champions': Brand.green, 'Leales': Brand.blue,
+                  'Recientes': Brand.accent, 'En riesgo': Brand.red,
+                  'Perdidos VIP': '#7C3AED', 'Ocasionales': Brand.subtext,
+                };
+                const color = segColor[seg.segmento] ?? Brand.subtext;
+                return (
+                  <View key={i} style={[styles.alertaRow, { borderLeftColor: color, backgroundColor: Brand.card, marginBottom: 8 }]}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <Text style={[styles.alertaLabelText, { color }]}>
+                        {seg.segmento.toUpperCase()} — {seg.usuarios.toLocaleString()} usuarios ({seg.porcentaje}%)
+                      </Text>
+                      <Text style={[styles.alertaLabelText, {
+                        color: seg.prioridad === 'alta' ? Brand.red : Brand.subtext,
+                      }]}>
+                        {seg.prioridad === 'alta' ? 'PRIORIDAD ALTA' : 'PRIORIDAD MEDIA'}
+                      </Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', gap: 16, marginBottom: 4 }}>
+                      <Text style={styles.sub}>LTV prom: ${seg.ltv_promedio.toLocaleString()}</Text>
+                      <Text style={styles.sub}>Frec. prom: {seg.frecuencia_promedio}x</Text>
+                      <Text style={styles.sub}>Recencia: {seg.recencia_promedio_dias}d</Text>
+                    </View>
+                    <Text style={[styles.alertaTexto, { color: Brand.subtext, fontSize: 11 }]}>{seg.accion}</Text>
+                  </View>
+                );
+              })}
+            </View>
+          )}
+
+          {/* Canal de adquisicion */}
+          {adquisicion.length > 0 && (
+            <View style={[styles.card, { backgroundColor: Brand.cardOrange }]}>
+              <View style={styles.seccionHeader}>
+                <Ionicons name="funnel-outline" size={18} color={Brand.accent} />
+                <Text style={[styles.seccionTitulo, { color: Brand.accent }]}>Canal de adquisicion</Text>
+              </View>
+              <Text style={styles.sub}>Conversion de registro a primera orden por canal</Text>
+              {adquisicion.map((a, i) => (
+                <View key={i} style={styles.catRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.catNombre}>{a.canal} · {a.dispositivo}</Text>
+                    <Text style={styles.catSub}>
+                      {a.usuarios_registrados.toLocaleString()} registrados · {a.primeras_ordenes.toLocaleString()} compraron
+                    </Text>
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={[styles.catPremium, {
+                      color: a.conversion_pct > 60 ? Brand.green : a.conversion_pct > 30 ? '#D97706' : Brand.red,
+                    }]}>
+                      {a.conversion_pct}% conv.
+                    </Text>
+                    <Text style={styles.catRango}>${a.ticket_promedio} ticket</Text>
+                  </View>
+                </View>
+              ))}
+              <View style={[styles.alertaRow, { borderLeftColor: Brand.accent, backgroundColor: Brand.card, marginTop: 8 }]}>
+                <View style={styles.alertaLabel}>
+                  <Text style={styles.alertaLabelText}>INSIGHT</Text>
+                </View>
+                <Text style={styles.alertaTexto}>
+                  {adquisicion.sort((a, b) => b.conversion_pct - a.conversion_pct)[0]?.canal} tiene la mayor tasa de conversion.
+                  Invertir mas en ese canal reduce el costo de adquisicion por cliente activo.
+                </Text>
+              </View>
+            </View>
+          )}
+
           <View style={[styles.card, { backgroundColor: Brand.cardPurple }]}>
             <View style={styles.seccionHeader}>
               <Ionicons name="card-outline" size={18} color={Brand.purple} />
@@ -636,6 +821,78 @@ export default function MasScreen() {
       )}
 
       <View style={{ height: 32 }} />
+
+      {/* Modal premium */}
+      <Modal visible={modalPremium} transparent animationType="fade">
+        <View style={styles.modalBg}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitulo}>Productos premium a mostrar</Text>
+            <Text style={styles.modalSub}>Cantidad de candidatos premium visibles ({premium.length} en total)</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder={`Max: ${premium.length}`}
+              keyboardType="numeric"
+              value={cantidadPremiumInput}
+              onChangeText={setCantidadPremiumInput}
+              placeholderTextColor={Brand.subtext}
+            />
+            <TouchableOpacity style={[styles.modalBtn, { backgroundColor: Brand.blue }]} onPress={aplicarPremium}>
+              <Text style={{ color: '#fff', fontWeight: 'bold' }}>Aplicar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setModalPremium(false)} style={{ marginTop: 12 }}>
+              <Text style={{ color: Brand.subtext, textAlign: 'center' }}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal categorias */}
+      <Modal visible={modalCat} transparent animationType="fade">
+        <View style={styles.modalBg}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitulo}>Categorias a mostrar</Text>
+            <Text style={styles.modalSub}>Cuantas categorias ver. Deja en blanco para mostrar todas ({categorias.length}).</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder={`Todas (${categorias.length})`}
+              keyboardType="numeric"
+              value={cantidadCatInput}
+              onChangeText={setCantidadCatInput}
+              placeholderTextColor={Brand.subtext}
+            />
+            <TouchableOpacity style={styles.modalBtn} onPress={aplicarCat}>
+              <Text style={{ color: '#fff', fontWeight: 'bold' }}>Aplicar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setModalCat(false)} style={{ marginTop: 12 }}>
+              <Text style={{ color: Brand.subtext, textAlign: 'center' }}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal ingresos por cocina */}
+      <Modal visible={modalIngCocina} transparent animationType="fade">
+        <View style={styles.modalBg}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitulo}>Tipos de cocina a mostrar</Text>
+            <Text style={styles.modalSub}>Cantidad de tipos de cocina en el ranking de ingresos ({ingCocina.length} en total)</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder={`Max: ${ingCocina.length}`}
+              keyboardType="numeric"
+              value={cantidadIngInput}
+              onChangeText={setCantidadIngInput}
+              placeholderTextColor={Brand.subtext}
+            />
+            <TouchableOpacity style={[styles.modalBtn, { backgroundColor: Brand.green }]} onPress={aplicarIngCocina}>
+              <Text style={{ color: '#fff', fontWeight: 'bold' }}>Aplicar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setModalIngCocina(false)} style={{ marginTop: 12 }}>
+              <Text style={{ color: Brand.subtext, textAlign: 'center' }}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -684,4 +941,12 @@ const styles = StyleSheet.create({
   reporteSub:      { fontSize: 12, color: Brand.subtext, lineHeight: 18, marginBottom: 14 },
   btnReporte:      { borderRadius: 10, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   btnReporteText:  { color: '#fff', fontWeight: 'bold', fontSize: 14 },
+  chipFiltro:      { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, borderWidth: 1, borderColor: Brand.accent },
+  chipFiltroTxt:   { fontSize: 11, color: Brand.accent, fontWeight: '600' },
+  modalBg:         { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 32 },
+  modalCard:       { backgroundColor: Brand.card, borderRadius: 16, padding: 24 },
+  modalTitulo:     { fontSize: 16, fontWeight: 'bold', color: Brand.text, marginBottom: 6 },
+  modalSub:        { fontSize: 12, color: Brand.subtext, marginBottom: 16, lineHeight: 18 },
+  modalInput:      { borderWidth: 1, borderColor: Brand.border, borderRadius: 10, padding: 12, color: Brand.text, marginBottom: 16, fontSize: 16 },
+  modalBtn:        { backgroundColor: Brand.accent, borderRadius: 10, padding: 14, alignItems: 'center' as const },
 });

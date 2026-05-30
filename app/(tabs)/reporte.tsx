@@ -17,7 +17,7 @@ const fetchJSON = (url: string) => {
 };
 
 export default function ReporteScreen() {
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
@@ -55,15 +55,15 @@ export default function ReporteScreen() {
         <div style="width:${cancel.porcentaje}%; background:#ef4444;"></div>
       </div>`;
 
-    const filasTop = top.map((r, i) => `
+    const filasTop = top.map((r: any, i: number) => `
       <tr style="border-bottom:1px solid #1B2A3F;">
         <td style="padding:10px 8px; color:#64748B;">${i + 1}</td>
         <td style="padding:10px 8px; font-weight:600;">${r.nombre}</td>
         <td style="padding:10px 8px; text-align:right; color:#FF6B35; font-weight:bold;">${Number(r.total_pedidos).toLocaleString()}</td>
       </tr>`).join('');
 
-    const maxTop = Math.max(...top.map(r => Number(r.total_pedidos)));
-    const barrasTop = top.map((r, i) => `
+    const maxTop = Math.max(...top.map((r: any) => Number(r.total_pedidos)));
+    const barrasTop = top.map((r: any, i: number) => `
       <div style="display:flex; align-items:center; margin-bottom:10px; gap:10px;">
         <div style="width:90px; font-size:11px; color:#64748B; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${r.nombre}</div>
         <div style="flex:1; height:14px; background:#0D1B2A; border-radius:7px; overflow:hidden;">
@@ -231,7 +231,7 @@ export default function ReporteScreen() {
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Top 5 restaurantes</Text>
-        {top.map((r, i) => (
+        {top.map((r: any, i: number) => (
           <Text key={i} style={styles.topItem}>{i + 1}. {r.nombre} — <Text style={{ color: Brand.accent }}>{Number(r.total_pedidos).toLocaleString()} pedidos</Text></Text>
         ))}
       </View>

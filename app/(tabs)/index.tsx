@@ -9,7 +9,7 @@ function Tendencia({ v, inv = false }: { v: number; inv?: boolean }) {
   const bueno = inv ? v < 0 : v > 0;
   return (
     <Text style={{ fontSize: 11, marginTop: 4, color: bueno ? Brand.green : Brand.red, fontWeight: '600' }}>
-      {v > 0 ? '▲' : '▼'} {Math.abs(v)}% vs mes anterior
+      {v > 0 ? `▲ Subio ${v}% respecto al mes pasado` : `▼ Bajo ${Math.abs(v)}% respecto al mes pasado`}
     </Text>
   );
 }

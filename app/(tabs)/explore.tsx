@@ -19,7 +19,7 @@ export default function ReporteScreen() {
         fetch(`${API}/kpi/top-restaurantes`).then(r => r.json()),
       ]);
 
-      const restaurantesHTML = r.map((rest, i) => `
+      const restaurantesHTML = r.map((rest: any, i: number) => `
         <tr>
           <td>${i + 1}</td>
           <td>${rest.nombre}</td>

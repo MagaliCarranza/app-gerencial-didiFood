@@ -17,15 +17,28 @@ export default function RestaurantesScreen() {
   const [ranking,      setRanking]      = useState<any[]>([]);
   const [distribucion, setDistribucion] = useState<any[]>([]);
   const [porCocina,    setPorCocina]    = useState<any[]>([]);
+  const [califRest,    setCalifRest]    = useState<any[]>([]);
   const [loading,      setLoading]      = useState(true);
   const [error,        setError]        = useState('');
-  const [limitModal,   setLimitModal]   = useState(false);
-  const [limitInput,   setLimitInput]   = useState('10');
-  const [limit,        setLimit]        = useState(10);
+  const [limitModal,          setLimitModal]          = useState(false);
+  const [limitInput,          setLimitInput]          = useState('10');
+  const [limit,               setLimit]               = useState(10);
+  const [cantidadDist,        setCantidadDist]        = useState(8);
+  const [cantidadDistInput,   setCantidadDistInput]   = useState('8');
+  const [modalDist,           setModalDist]           = useState(false);
+  const [cantidadCocina,      setCantidadCocina]      = useState(8);
+  const [cantidadCocinaInput, setCantidadCocinaInput] = useState('8');
+  const [modalCocina,         setModalCocina]         = useState(false);
 
   useEffect(() => {
     AsyncStorage.getItem('ranking_limit').then(v => {
       if (v) { setLimit(parseInt(v)); setLimitInput(v); }
+    });
+    AsyncStorage.getItem('restaurantes_dist_cantidad').then(v => {
+      if (v) { setCantidadDist(parseInt(v)); setCantidadDistInput(v); }
+    });
+    AsyncStorage.getItem('restaurantes_cocina_cantidad').then(v => {
+      if (v) { setCantidadCocina(parseInt(v)); setCantidadCocinaInput(v); }
     });
   }, []);
 
@@ -35,8 +48,11 @@ export default function RestaurantesScreen() {
       fetchJSON(`${API}/restaurantes/ranking?limit=${lim}`),
       fetchJSON(`${API}/restaurantes/distribucion`),
       fetchJSON(`${API}/restaurantes/por-cocina`),
-    ]).then(([rk, di, co]) => {
-      setRanking(rk); setDistribucion(di); setPorCocina(co); setLoading(false);
+      fetchJSON(`${API}/calificaciones/restaurantes?limit=10`).catch(() => []),
+    ]).then(([rk, di, co, cal]) => {
+      setRanking(rk); setDistribucion(di); setPorCocina(co);
+      setCalifRest(Array.isArray(cal) ? cal : []);
+      setLoading(false);
     }).catch(() => { setError('Error cargando datos'); setLoading(false); });
   }, [limit]);
 
@@ -47,11 +63,21 @@ export default function RestaurantesScreen() {
     if (n > 0) { AsyncStorage.setItem('ranking_limit', String(n)); setLimit(n); cargar(n); }
     setLimitModal(false);
   };
+  const aplicarDist = () => {
+    const n = parseInt(cantidadDistInput);
+    if (n > 0) { AsyncStorage.setItem('restaurantes_dist_cantidad', String(n)); setCantidadDist(n); }
+    setModalDist(false);
+  };
+  const aplicarCocina = () => {
+    const n = parseInt(cantidadCocinaInput);
+    if (n > 0) { AsyncStorage.setItem('restaurantes_cocina_cantidad', String(n)); setCantidadCocina(n); }
+    setModalCocina(false);
+  };
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={Brand.accent} /></View>;
   if (error)   return <View style={styles.center}><Text style={{ color: Brand.red }}>{error}</Text></View>;
 
-  const barDataCocina = porCocina.slice(0, 8).map(r => ({
+  const barDataCocina = porCocina.slice(0, cantidadCocina).map(r => ({
     value:      r.pedidos,
     label:      r.tipo_cocina.substring(0, 6),
     frontColor: r.participacion_pct < 3 ? Brand.red : r.participacion_pct > 10 ? Brand.green : Brand.accent,
@@ -67,11 +93,17 @@ export default function RestaurantesScreen() {
 
       {/* SECCION 1: Distribucion por ciudad */}
       <View style={[styles.card, { backgroundColor: Brand.cardBlue }]}>
-        <View style={styles.seccionHeader}>
-          <Ionicons name="map-outline" size={18} color={Brand.blue} />
-          <Text style={[styles.seccionTitulo, { color: Brand.blue }]}>Distribucion por la ciudad</Text>
+        <View style={[styles.seccionHeader, { justifyContent: 'space-between' }]}>
+          <View style={styles.seccionHeader}>
+            <Ionicons name="map-outline" size={18} color={Brand.blue} />
+            <Text style={[styles.seccionTitulo, { color: Brand.blue }]}>Distribucion por la ciudad</Text>
+          </View>
+          <TouchableOpacity onPress={() => setModalDist(true)} style={[styles.chipSmall, { borderColor: Brand.blue }]}>
+            <Ionicons name="options-outline" size={14} color={Brand.blue} />
+            <Text style={[styles.chipSmallText, { color: Brand.blue }]}>Cantidad: {cantidadDist}</Text>
+          </TouchableOpacity>
         </View>
-        {distribucion.slice(0, 8).map((d, i) => (
+        {distribucion.slice(0, cantidadDist).map((d, i) => (
           <View key={i} style={styles.distRow}>
             <View style={{ flex: 1 }}>
               <Text style={styles.distColonia}>{d.colonia}</Text>
@@ -98,9 +130,15 @@ export default function RestaurantesScreen() {
 
       {/* SECCION 2: Por tipo de cocina + marketing */}
       <View style={[styles.card, { backgroundColor: Brand.cardOrange }]}>
-        <View style={styles.seccionHeader}>
-          <Ionicons name="stats-chart-outline" size={18} color={Brand.accent} />
-          <Text style={[styles.seccionTitulo, { color: Brand.accent }]}>Pedidos por tipo de cocina</Text>
+        <View style={[styles.seccionHeader, { justifyContent: 'space-between' }]}>
+          <View style={styles.seccionHeader}>
+            <Ionicons name="stats-chart-outline" size={18} color={Brand.accent} />
+            <Text style={[styles.seccionTitulo, { color: Brand.accent }]}>Pedidos por tipo de cocina</Text>
+          </View>
+          <TouchableOpacity onPress={() => setModalCocina(true)} style={styles.chipSmall}>
+            <Ionicons name="options-outline" size={14} color={Brand.accent} />
+            <Text style={styles.chipSmallText}>Cantidad: {cantidadCocina}</Text>
+          </TouchableOpacity>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
           <BarChart
@@ -115,7 +153,7 @@ export default function RestaurantesScreen() {
             height={160}
           />
         </ScrollView>
-        {porCocina.filter(r => r.marketing).map((r, i) => (
+        {porCocina.slice(0, cantidadCocina).filter(r => r.marketing).map((r, i) => (
           <View key={i} style={[styles.alertaRow, {
             borderLeftColor: tipoColor(r.marketing_tipo ?? 'ok'),
           }]}>
@@ -196,6 +234,105 @@ export default function RestaurantesScreen() {
           </View>
         ))}
       </View>
+
+      {/* Calificaciones reales */}
+      {califRest.length > 0 && (
+        <View style={[styles.card, { backgroundColor: Brand.cardYellow }]}>
+          <View style={styles.seccionHeader}>
+            <Ionicons name="star-outline" size={18} color="#D97706" />
+            <Text style={[styles.seccionTitulo, { color: '#D97706' }]}>Calificaciones reales (reseñas verificadas)</Text>
+          </View>
+          <Text style={{ fontSize: 11, color: Brand.subtext, marginBottom: 8 }}>Top 10 por calificacion promedio</Text>
+
+          {califRest.map((r, i) => {
+            const color = r.nivel === 'warn' ? Brand.red : r.nivel === 'info' ? '#D97706' : Brand.green;
+            return (
+              <View key={i} style={styles.rankCard}>
+                <View style={styles.rankHeader}>
+                  <Text style={[styles.rankPos, { color, fontSize: 16 }]}>#{i + 1}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.rankNombre} numberOfLines={1}>{r.nombre}</Text>
+                    <Text style={styles.rankSub}>{r.tipo_cocina} · {r.colonia}</Text>
+                  </View>
+                  <View style={[styles.rankBadge, {
+                    backgroundColor: r.nivel === 'warn' ? '#FEE2E2' : '#FEF9C3',
+                  }]}>
+                    <Text style={[styles.rankBadgeNum, { color }]}>{r.calificacion_real}</Text>
+                    <Text style={styles.rankBadgeLbl}>{r.total_reseñas} reseñas</Text>
+                  </View>
+                </View>
+                <View style={styles.rankStats}>
+                  <View style={styles.statBox}>
+                    <Text style={[styles.statVal, { color: Brand.green, fontSize: 14 }]}>{r.pct_positivas}%</Text>
+                    <Text style={styles.statLbl}>positivas</Text>
+                  </View>
+                  <View style={styles.statBox}>
+                    <Text style={[styles.statVal, { color: Brand.red, fontSize: 14 }]}>{r.pct_negativas}%</Text>
+                    <Text style={styles.statLbl}>negativas</Text>
+                  </View>
+                  <View style={styles.statBox}>
+                    <Text style={[styles.statVal, { fontSize: 14 }]}>{r.con_comentario}</Text>
+                    <Text style={styles.statLbl}>con comentario</Text>
+                  </View>
+                </View>
+                {r.sugerencia !== '' && (
+                  <View style={[styles.alertaRow, { borderLeftColor: color, marginTop: 6 }]}>
+                    <Text style={styles.alertaTexto}>{r.sugerencia}</Text>
+                  </View>
+                )}
+              </View>
+            );
+          })}
+        </View>
+      )}
+
+      {/* Modal distribución */}
+      <Modal visible={modalDist} transparent animationType="fade">
+        <View style={styles.modalBg}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitulo}>Zonas a mostrar</Text>
+            <Text style={styles.modalSub}>Cantidad de colonias/zonas en la distribucion por ciudad ({distribucion.length} en total)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder={`Max: ${distribucion.length}`}
+              keyboardType="numeric"
+              value={cantidadDistInput}
+              onChangeText={setCantidadDistInput}
+              placeholderTextColor={Brand.subtext}
+            />
+            <TouchableOpacity style={[styles.btn, { backgroundColor: Brand.blue }]} onPress={aplicarDist}>
+              <Text style={{ color: '#fff', fontWeight: 'bold' }}>Aplicar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setModalDist(false)} style={{ marginTop: 12 }}>
+              <Text style={{ color: Brand.subtext, textAlign: 'center' }}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal cocina */}
+      <Modal visible={modalCocina} transparent animationType="fade">
+        <View style={styles.modalBg}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitulo}>Tipos de cocina a mostrar</Text>
+            <Text style={styles.modalSub}>Cantidad de tipos de cocina en la grafica y sugerencias ({porCocina.length} en total)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder={`Max: ${porCocina.length}`}
+              keyboardType="numeric"
+              value={cantidadCocinaInput}
+              onChangeText={setCantidadCocinaInput}
+              placeholderTextColor={Brand.subtext}
+            />
+            <TouchableOpacity style={styles.btn} onPress={aplicarCocina}>
+              <Text style={{ color: '#fff', fontWeight: 'bold' }}>Aplicar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setModalCocina(false)} style={{ marginTop: 12 }}>
+              <Text style={{ color: Brand.subtext, textAlign: 'center' }}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Modal limit */}
       <Modal visible={limitModal} transparent animationType="fade">
