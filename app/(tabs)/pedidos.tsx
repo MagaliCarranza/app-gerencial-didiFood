@@ -166,12 +166,16 @@ export default function PedidosScreen() {
 
   const barDataPedidos = porMesAnio.map(r => {
     const meta = metaDelMes(r.mes);
+    const color = meta > 0 ? (r.entregados >= meta ? Brand.green : Brand.blue) : Brand.blue;
     return {
       value: r.entregados,
       label: r.label,
-      frontColor: meta > 0
-        ? (r.entregados >= meta ? Brand.green : Brand.blue)
-        : Brand.blue,
+      frontColor: color,
+      topLabelComponent: () => r.entregados > 0 ? (
+        <Text style={{ fontSize: 7, color, marginBottom: 1, fontWeight: '600' }}>
+          {r.entregados >= 1000 ? `${(r.entregados / 1000).toFixed(1)}k` : String(r.entregados)}
+        </Text>
+      ) : null,
     };
   });
 
@@ -447,31 +451,36 @@ export default function PedidosScreen() {
                           <Text style={[styles.sub, { marginBottom: 6, fontWeight: '600' }]}>
                             Conductores en {z.zona} — del mas rapido al mas lento:
                           </Text>
-                          {conds.map((c: any, j: number) => (
-                            <View key={j} style={styles.condZonaRow}>
-                              <View style={[styles.condRankBadge, {
-                                backgroundColor:
-                                  j === 0 ? Brand.green :
-                                  j === conds.length - 1 ? Brand.red : Brand.border,
-                              }]}>
-                                <Text style={{
-                                  fontSize: 11, fontWeight: '700',
-                                  color: j === 0 || j === conds.length - 1 ? '#fff' : Brand.subtext,
-                                }}>{j + 1}</Text>
+                          {conds.map((c: any, j: number) => {
+                            const pocaMuestra = c.total_entregas < 3;
+                            const esPrimero   = j === 0;
+                            const badgeBg     = esPrimero ? Brand.green : Brand.border;
+                            const badgeColor  = esPrimero ? '#fff' : Brand.subtext;
+                            const tiempoColor = esPrimero ? Brand.green : Brand.text;
+                            return (
+                              <View key={j}>
+                                <View style={styles.condZonaRow}>
+                                  <View style={[styles.condRankBadge, { backgroundColor: badgeBg }]}>
+                                    <Text style={{ fontSize: 11, fontWeight: '700', color: badgeColor }}>
+                                      {j + 1}
+                                    </Text>
+                                  </View>
+                                  <View style={{ flex: 1 }}>
+                                    <Text style={styles.condZonaNombre}>{c.conductor}</Text>
+                                    <Text style={styles.sub}>{c.tipo_vehiculo} · {c.total_entregas} entrega{c.total_entregas !== 1 ? 's' : ''}</Text>
+                                  </View>
+                                  <Text style={[styles.condZonaTiempo, { color: tiempoColor }]}>
+                                    {c.tiempo_promedio} min
+                                  </Text>
+                                </View>
+                                {pocaMuestra && (
+                                  <Text style={{ fontSize: 10, color: Brand.subtext, marginLeft: 36, marginTop: -4, marginBottom: 4, fontStyle: 'italic' }}>
+                                    Poca muestra — dato no concluyente
+                                  </Text>
+                                )}
                               </View>
-                              <View style={{ flex: 1 }}>
-                                <Text style={styles.condZonaNombre}>{c.conductor}</Text>
-                                <Text style={styles.sub}>{c.tipo_vehiculo} · {c.total_entregas} entregas</Text>
-                              </View>
-                              <Text style={[styles.condZonaTiempo, {
-                                color:
-                                  j === 0 ? Brand.green :
-                                  j === conds.length - 1 ? Brand.red : Brand.text,
-                              }]}>
-                                {c.tiempo_promedio} min
-                              </Text>
-                            </View>
-                          ))}
+                            );
+                          })}
                           {conds.length >= 2 && (
                             <View style={[styles.alertaRow, { borderLeftColor: Brand.subtext, marginTop: 6 }]}>
                               <Text style={styles.alertaTexto}>
@@ -569,11 +578,19 @@ export default function PedidosScreen() {
 
           {propinas.por_mes?.length > 0 && (() => {
             const mesData = propinas.por_mes.filter((m: any) => m.anio === anioSel);
-            const barPropinas = mesData.map((m: any) => ({
-              value: m.tasa_propina_pct,
-              label: MESES[m.mes],
-              frontColor: m.tasa_propina_pct > 40 ? Brand.green : '#D97706',
-            }));
+            const barPropinas = mesData.map((m: any) => {
+              const color = m.tasa_propina_pct > 40 ? Brand.green : '#D97706';
+              return {
+                value: m.tasa_propina_pct,
+                label: MESES[m.mes],
+                frontColor: color,
+                topLabelComponent: () => m.tasa_propina_pct > 0 ? (
+                  <Text style={{ fontSize: 7, color, marginBottom: 1, fontWeight: '600' }}>
+                    {m.tasa_propina_pct}%
+                  </Text>
+                ) : null,
+              };
+            });
             return barPropinas.length > 0 ? (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
                 <BarChart

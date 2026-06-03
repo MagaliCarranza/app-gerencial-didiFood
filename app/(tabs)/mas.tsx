@@ -129,7 +129,7 @@ export default function MasScreen() {
     try {
       const { uri } = await Print.printToFileAsync({ html, base64: false });
       if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: nombre });
+        await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: nombre, UTI: 'com.adobe.pdf' });
       } else {
         Alert.alert('PDF generado', `Guardado en: ${uri}`);
       }
@@ -141,52 +141,99 @@ export default function MasScreen() {
   const reportePedidos = async () => {
     if (!kpisResumen) return;
     setGenerando('pedidos');
-    const { pedidos, cancelaciones, tiempo } = kpisResumen;
+    const { pedidos, ingresos, cancelaciones, tiempo } = kpisResumen;
+    const ticketPromedio = pedidos.mes_actual > 0
+      ? (ingresos.mes_actual / pedidos.mes_actual).toFixed(2)
+      : '0.00';
+    const totalCancelados = cancelaciones.por_cliente + cancelaciones.por_restaurante + cancelaciones.por_conductor;
+    const pctCliente     = totalCancelados > 0 ? ((cancelaciones.por_cliente     / totalCancelados) * 100).toFixed(1) : '0';
+    const pctRestaurante = totalCancelados > 0 ? ((cancelaciones.por_restaurante / totalCancelados) * 100).toFixed(1) : '0';
+    const pctConductor   = totalCancelados > 0 ? ((cancelaciones.por_conductor   / totalCancelados) * 100).toFixed(1) : '0';
     const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/>
 <style>${CSS_BASE}</style></head><body>
 <div class="hdr" style="background:#2563eb;">
   <h1>Reporte de Pedidos</h1>
-  <p>DiDi Food Oaxaca · ${fecha()}</p>
+  <p>DiDi Food Oaxaca · ${pedidos.periodo} · Generado el ${fecha()}</p>
 </div>
 <div class="grid2">
   <div class="kpi" style="border-color:#2563eb;">
     <div class="lbl">Pedidos este mes</div>
     <div class="val" style="color:#2563eb;">${pedidos.mes_actual.toLocaleString()}</div>
     <div class="tr" style="color:${pedidos.variacion >= 0 ? '#16a34a' : '#dc2626'}">
-      ${pedidos.variacion >= 0 ? '▲' : '▼'} ${Math.abs(pedidos.variacion)}% vs mes anterior
+      ${pedidos.variacion >= 0 ? '▲' : '▼'} ${Math.abs(pedidos.variacion)}% vs mes anterior (${pedidos.mes_anterior.toLocaleString()})
     </div>
   </div>
   <div class="kpi" style="border-color:#16a34a;">
-    <div class="lbl">Total historico</div>
-    <div class="val" style="color:#16a34a;">${pedidos.total_historico.toLocaleString()}</div>
-    <div class="tr">Acumulado desde inicio</div>
+    <div class="lbl">Ingresos este mes</div>
+    <div class="val" style="color:#16a34a;">$${ingresos.mes_actual.toLocaleString()}</div>
+    <div class="tr" style="color:${ingresos.variacion >= 0 ? '#16a34a' : '#dc2626'}">
+      ${ingresos.variacion >= 0 ? '▲' : '▼'} ${Math.abs(ingresos.variacion)}% vs mes anterior
+    </div>
+  </div>
+  <div class="kpi" style="border-color:#7C3AED;">
+    <div class="lbl">Ticket promedio</div>
+    <div class="val" style="color:#7C3AED;">$${ticketPromedio}</div>
+    <div class="tr">Ingreso por pedido entregado</div>
   </div>
   <div class="kpi" style="border-color:${cancelaciones.tasa_actual > 15 ? '#dc2626' : '#16a34a'};">
     <div class="lbl">Tasa de cancelacion</div>
     <div class="val" style="color:${cancelaciones.tasa_actual > 15 ? '#dc2626' : '#16a34a'};">${cancelaciones.tasa_actual}%</div>
-    <div class="tr">${cancelaciones.total_cancelados.toLocaleString()} cancelados este mes</div>
+    <div class="tr">${cancelaciones.variacion >= 0 ? '+' : ''}${cancelaciones.variacion}% vs mes ant. · ${cancelaciones.total_cancelados.toLocaleString()} cancelados</div>
   </div>
   <div class="kpi" style="border-color:${tiempo.mes_actual > 50 ? '#dc2626' : '#FF6B35'};">
     <div class="lbl">Tiempo entrega promedio</div>
     <div class="val" style="color:${tiempo.mes_actual > 50 ? '#dc2626' : '#FF6B35'};">${tiempo.mes_actual} min</div>
-    <div class="tr">Historico: ${tiempo.promedio_historico} min</div>
+    <div class="tr">Historico: ${tiempo.promedio_historico} min · Mes ant: ${tiempo.mes_anterior} min</div>
+  </div>
+  <div class="kpi" style="border-color:#64748B;">
+    <div class="lbl">Total historico</div>
+    <div class="val" style="color:#64748B;">${pedidos.total_historico.toLocaleString()}</div>
+    <div class="tr">Pedidos acumulados desde inicio</div>
   </div>
 </div>
 <div class="sec">
   <h2 style="border-color:#2563eb; color:#2563eb;">Analisis del periodo</h2>
+  <p style="color:#64748B;font-size:11px;margin-bottom:10px;">Comparacion entre el mes actual y el mes anterior. La variacion indica si el negocio crece o retrocede en cada dimension clave.</p>
   <table>
-    <tr style="background:#2563eb;"><th>Indicador</th><th>Valor actual</th><th>Comparacion</th><th>Estado</th></tr>
-    <tr><td>Pedidos del mes</td><td>${pedidos.mes_actual.toLocaleString()}</td>
-      <td>${pedidos.variacion >= 0 ? '+' : ''}${pedidos.variacion}% vs mes ant.</td>
-      <td><span class="tag" style="background:${pedidos.variacion >= 0 ? '#DCFCE7' : '#FEE2E2'};color:${pedidos.variacion >= 0 ? '#166534' : '#991b1b'};">${pedidos.variacion >= 0 ? 'EN CRECIMIENTO' : 'EN BAJA'}</span></td>
+    <tr style="background:#2563eb;"><th>Indicador</th><th>Este mes</th><th>Mes anterior</th><th>Variacion</th><th>Estado</th></tr>
+    <tr><td>Pedidos</td><td>${pedidos.mes_actual.toLocaleString()}</td>
+      <td>${pedidos.mes_anterior.toLocaleString()}</td>
+      <td style="color:${pedidos.variacion >= 0 ? '#16a34a' : '#dc2626'}">${pedidos.variacion >= 0 ? '+' : ''}${pedidos.variacion}%</td>
+      <td><span class="tag" style="background:${pedidos.variacion >= 0 ? '#DCFCE7' : '#FEE2E2'};color:${pedidos.variacion >= 0 ? '#166534' : '#991b1b'};">${pedidos.variacion >= 0 ? 'CRECIMIENTO' : 'BAJA'}</span></td>
     </tr>
-    <tr><td>Cancelaciones</td><td>${cancelaciones.tasa_actual}%</td>
-      <td>${cancelaciones.variacion >= 0 ? '+' : ''}${cancelaciones.variacion}% vs mes ant.</td>
+    <tr><td>Ingresos</td><td>$${ingresos.mes_actual.toLocaleString()}</td>
+      <td>$${ingresos.mes_anterior.toLocaleString()}</td>
+      <td style="color:${ingresos.variacion >= 0 ? '#16a34a' : '#dc2626'}">${ingresos.variacion >= 0 ? '+' : ''}${ingresos.variacion}%</td>
+      <td><span class="tag" style="background:${ingresos.variacion >= 0 ? '#DCFCE7' : '#FEE2E2'};color:${ingresos.variacion >= 0 ? '#166534' : '#991b1b'};">${ingresos.variacion >= 0 ? 'CRECIMIENTO' : 'BAJA'}</span></td>
+    </tr>
+    <tr><td>Tasa cancelacion</td><td>${cancelaciones.tasa_actual}%</td>
+      <td>${cancelaciones.tasa_anterior}%</td>
+      <td style="color:${cancelaciones.variacion <= 0 ? '#16a34a' : '#dc2626'}">${cancelaciones.variacion >= 0 ? '+' : ''}${cancelaciones.variacion}%</td>
       <td><span class="tag" style="background:${cancelaciones.tasa_actual > 15 ? '#FEE2E2' : '#DCFCE7'};color:${cancelaciones.tasa_actual > 15 ? '#991b1b' : '#166534'};">${cancelaciones.tasa_actual > 15 ? 'REVISAR' : 'NORMAL'}</span></td>
     </tr>
     <tr><td>Tiempo entrega</td><td>${tiempo.mes_actual} min</td>
-      <td>Historico: ${tiempo.promedio_historico} min</td>
+      <td>${tiempo.mes_anterior} min</td>
+      <td style="color:${tiempo.mes_actual <= tiempo.mes_anterior ? '#16a34a' : '#dc2626'}">${tiempo.mes_actual <= tiempo.mes_anterior ? '▼ mejoro' : '▲ subio'}</td>
       <td><span class="tag" style="background:${tiempo.mes_actual > 50 ? '#FEE2E2' : '#DCFCE7'};color:${tiempo.mes_actual > 50 ? '#991b1b' : '#166534'};">${tiempo.mes_actual > 50 ? 'ELEVADO' : 'NORMAL'}</span></td>
+    </tr>
+  </table>
+</div>
+<div class="sec">
+  <h2 style="border-color:#dc2626; color:#dc2626;">Desglose de cancelaciones <span style="font-size:11px;font-weight:normal;color:#64748B;">— acumulado historico</span></h2>
+  <p style="color:#64748B;font-size:11px;margin-bottom:10px;">Totales acumulados desde el inicio de operaciones. Saber quien cancela indica donde esta el problema operativo: por restaurante apunta a fallas de capacidad; por conductor, a logistica; por cliente, a experiencia de usuario.</p>
+  <table>
+    <tr style="background:#dc2626;"><th>Origen</th><th>Cancelaciones (hist.)</th><th>Distribucion</th><th>Accion sugerida</th></tr>
+    <tr><td>Por el cliente</td><td>${cancelaciones.por_cliente.toLocaleString()}</td>
+      <td>${pctCliente}%</td>
+      <td>Revisar tiempos estimados mostrados en la app y claridad de los menus</td>
+    </tr>
+    <tr><td>Por el restaurante</td><td>${cancelaciones.por_restaurante.toLocaleString()}</td>
+      <td>${pctRestaurante}%</td>
+      <td>Auditar restaurantes con mayor frecuencia de rechazo; pueden tener problemas de stock o turnos</td>
+    </tr>
+    <tr><td>Por el conductor</td><td>${cancelaciones.por_conductor.toLocaleString()}</td>
+      <td>${pctConductor}%</td>
+      <td>Revisar zonas con baja densidad de conductores y ajustar incentivos en horas pico</td>
     </tr>
   </table>
 </div>
@@ -194,20 +241,26 @@ export default function MasScreen() {
   <h2 style="border-color:#2563eb; color:#2563eb;">Recomendaciones operativas</h2>
   ${cancelaciones.tasa_actual > 15 ? `<div class="note" style="border-color:#dc2626;background:#FEF2F2;">
     ALERTA: Tasa de cancelacion del ${cancelaciones.tasa_actual}% supera el umbral critico del 15%.
-    Accion inmediata: auditar motivos de cancelacion por zona y restaurante. Implementar alertas en tiempo real para conductores con mas de 3 cancelaciones en el dia.
-  </div>` : ''}
+    Accion inmediata: auditar motivos por zona y restaurante. Implementar alertas en tiempo real para conductores con mas de 3 cancelaciones en el dia.
+  <\/div>` : ''}
   ${tiempo.mes_actual > 50 ? `<div class="note" style="border-color:#F59E0B;background:#FFFBEB;">
     TIEMPO ELEVADO: ${tiempo.mes_actual} min de entrega promedio afecta la satisfaccion del usuario.
     Accion: revisar distribucion de conductores por zona y ajustar radios de asignacion de pedidos.
-  </div>` : ''}
+  <\/div>` : ''}
+  ${pedidos.variacion < 0 && ingresos.variacion < 0 ? `<div class="note" style="border-color:#dc2626;background:#FEF2F2;">
+    DOBLE CAIDA: tanto pedidos como ingresos bajaron este mes. Revisar si coincide con eventos externos (feriados, clima) o si refleja una tendencia que requiere accion comercial.
+  <\/div>` : ''}
+  ${pedidos.variacion >= 0 && ingresos.variacion < 0 ? `<div class="note" style="border-color:#F59E0B;background:#FFFBEB;">
+    ALERTA DE TICKET: los pedidos crecieron pero los ingresos bajaron, lo que indica que el ticket promedio cayo. Revisar si hay descuentos excesivos o si el mix de productos cambio hacia opciones de menor valor.
+  <\/div>` : ''}
   <div class="note" style="border-color:#2563eb;background:#EFF6FF;">
-    META SUGERIDA: mantener cancelaciones por debajo del 10% y tiempo de entrega bajo 45 min para el proximo mes.
-    Priorizar zonas con ratio pedidos/conductor menor a 3.
-  </div>
+    META SUGERIDA: mantener cancelaciones por debajo del 10% y tiempo de entrega bajo 45 min.
+    Ticket promedio actual $${ticketPromedio} — cada punto porcentual de mejora en cancelaciones equivale a recuperar aproximadamente ${Math.round(pedidos.mes_actual * 0.01 * parseFloat(ticketPromedio))} pesos en ingresos mensuales.
+  <\/div>
 </div>
 <div class="footer">DiDi Food Oaxaca · Reporte de Pedidos · Generado el ${fecha()}</div>
 </body></html>`;
-    await descargar(html, 'Reporte Pedidos DiDi Food');
+    await descargar(html, 'reporte-pedidos');
     setGenerando(null);
   };
 
@@ -243,17 +296,26 @@ export default function MasScreen() {
       <td style="color:#dc2626">${p.pedidos_entregados}</td>
       <td><span class="tag" style="background:#FEF3C7;color:#D97706;">20% OFF</span></td></tr>`).join('');
 
+    const cocLider    = porCocina[0];
+    const cocSegunda  = porCocina[1];
+    const cocinasBaja = porCocina.filter((c: any) => c.participacion_pct < 3).map((c: any) => c.tipo_cocina).slice(0, 4);
+    const tier1 = topRest.filter((r: any) => r.ingresos < 50000).length;
+    const tier2 = topRest.filter((r: any) => r.ingresos >= 50000 && r.ingresos < 100000).length;
+    const tier3 = topRest.filter((r: any) => r.ingresos >= 100000 && r.ingresos < 200000).length;
+    const tier4 = topRest.filter((r: any) => r.ingresos >= 200000).length;
+
     const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/>
 <style>${CSS_BASE}</style></head><body>
 <div class="hdr" style="background:#16a34a;">
   <h1>Reporte de Restaurantes</h1>
-  <p>DiDi Food Oaxaca · ${fecha()}</p>
+  <p>DiDi Food Oaxaca · ${topRest[0]?.periodo || porCocina[0]?.periodo || ''} · Generado el ${fecha()}</p>
 </div>
 <div class="sec">
-  <h2 style="border-color:#16a34a;color:#16a34a;">Ranking por ingresos — Top ${topRest.length}</h2>
+  <h2 style="border-color:#16a34a;color:#16a34a;">Ranking por ingresos — Top ${topRest.length} <span style="font-size:11px;font-weight:normal;color:#64748B;">— datos del periodo ${topRest[0]?.periodo || ''}</span></h2>
+  <p style="color:#64748B;margin-bottom:10px;font-size:11px;">Ingresos y pedidos del periodo actual (${topRest[0]?.periodo || 'mes en curso'}). La tasa de cancelacion refleja el comportamiento del restaurante en este periodo.</p>
   <table>
     <tr style="background:#16a34a;"><th>#</th><th>Restaurante</th><th>Cocina</th>
-    <th>Ingresos</th><th>Pedidos</th><th>Cancelac.</th><th>Comision sug.</th></tr>
+    <th>Ingresos (periodo)</th><th>Pedidos (periodo)</th><th>Cancelac.</th><th>Comision sug.</th></tr>
     ${htmlRest}
   </table>
   <div class="note" style="border-color:#16a34a;background:#F0FDF4;">
@@ -262,16 +324,18 @@ export default function MasScreen() {
   </div>
 </div>
 <div class="sec">
-  <h2 style="border-color:#16a34a;color:#16a34a;">Ingresos y ticket promedio por tipo de cocina</h2>
+  <h2 style="border-color:#16a34a;color:#16a34a;">Ingresos y ticket promedio por tipo de cocina <span style="font-size:11px;font-weight:normal;color:#64748B;">— datos del periodo ${ingCocina[0]?.periodo || ''}</span></h2>
+  <p style="color:#64748B;margin-bottom:10px;font-size:11px;">Ingresos del periodo actual (${ingCocina[0]?.periodo || 'mes en curso'}) por categoria de cocina. El ticket promedio es el ingreso promedio por pedido entregado en este periodo.</p>
   <table>
-    <tr style="background:#16a34a;"><th>Tipo de cocina</th><th>Ingresos totales</th><th>Pedidos</th><th>Ticket promedio</th></tr>
+    <tr style="background:#16a34a;"><th>Tipo de cocina</th><th>Ingresos (periodo)</th><th>Pedidos (periodo)</th><th>Ticket prom.</th></tr>
     ${htmlIngCoc}
   </table>
 </div>
 <div class="sec">
-  <h2 style="border-color:#16a34a;color:#16a34a;">Participacion por tipo de cocina</h2>
+  <h2 style="border-color:#16a34a;color:#16a34a;">Participacion por tipo de cocina <span style="font-size:11px;font-weight:normal;color:#64748B;">— datos del periodo ${porCocina[0]?.periodo || ''}</span></h2>
+  <p style="color:#64748B;margin-bottom:10px;font-size:11px;">Porcentaje de pedidos del periodo actual que corresponde a cada categoria de cocina.</p>
   <table>
-    <tr style="background:#16a34a;"><th>Tipo de cocina</th><th>Pedidos</th><th>Participacion</th><th>Nivel</th></tr>
+    <tr style="background:#16a34a;"><th>Tipo de cocina</th><th>Pedidos (periodo)</th><th>Participacion</th><th>Nivel</th></tr>
     ${htmlCoc}
   </table>
   <div class="note" style="border-color:#F59E0B;background:#FFFBEB;">
@@ -281,10 +345,10 @@ export default function MasScreen() {
 </div>
 ${oportunidades.horas.length > 0 ? `
 <div class="sec">
-  <h2 style="border-color:#D97706;color:#D97706;">Oportunidades de horario</h2>
+  <h2 style="border-color:#D97706;color:#D97706;">Oportunidades de horario <span style="font-size:11px;font-weight:normal;color:#64748B;">— patron historico acumulado</span></h2>
   <p style="color:#64748B;margin-bottom:10px;font-size:11px;">
-    Franjas de dia y hora con menor volumen en horario de operacion (7:00–23:00). El porcentaje indica
-    que parte de la demanda tipica recibe esa franja — 25% significa 4 veces menos pedidos que el promedio.
+    Franjas de dia y hora con menor volumen segun el historial acumulado de pedidos, dentro del horario de operacion (7:00–23:00). El porcentaje indica
+    que parte de la demanda tipica recibe esa franja — 25% significa 4 veces menos pedidos que el promedio historico.
   </p>
   <table>
     <tr style="background:#D97706;"><th>Dia</th><th>Horario</th><th>Pedidos historicos</th><th>Vs. promedio horario</th></tr>
@@ -308,22 +372,34 @@ ${oportunidades.horas.length > 0 ? `
 <div class="sec">
   <h2 style="border-color:#16a34a;color:#16a34a;">Recomendaciones estrategicas</h2>
   <div class="note" style="border-color:#2563eb;background:#EFF6FF;">
-    EXPANSION: priorizar restaurantes del tipo de cocina lider: ${porCocina[0]?.tipo_cocina ?? 'N/D'}.
-    Maximiza la oferta en la categoria con mayor demanda de usuarios.
+    <strong>EXPANSION — COCINAS PRIORITARIAS</strong><br/>
+    &bull; <strong>${cocLider?.tipo_cocina ?? 'N/D'}</strong> — cocina lider con el ${cocLider?.participacion_pct ?? '?'}% del total de pedidos (${(cocLider?.pedidos ?? 0).toLocaleString()} pedidos). Incorporar al menos 3 restaurantes adicionales de este tipo para sostener la demanda sin saturar la oferta existente. Priorizar colonias con menos de 3 restaurantes registrados.<br/>
+    ${cocSegunda ? `&bull; <strong>${cocSegunda.tipo_cocina}</strong> — segunda categoria con ${cocSegunda.participacion_pct}% de participacion. Reforzar con 1–2 restaurantes nuevos para capturar demanda que hoy se pierde por falta de opciones.<br/>` : ''}
+    ${cocinasBaja.length > 0 ? `&bull; Categorias con menos del 3% de participacion: <strong>${cocinasBaja.join(', ')}</strong>. Evaluar si existe demanda latente antes de invertir en incorporacion; si no la hay, no forzar oferta en esas categorias.` : ''}
   </div>
   <div class="note" style="border-color:#16a34a;background:#F0FDF4;">
-    COMISIONES: revisar trimestralmente. Escala sugerida: hasta $50k = 15%, $50k–$100k = 12%, mas de $100k = 10%.
+    <strong>ESCALA DE COMISIONES SUGERIDA</strong> (revision trimestral)<br/>
+    <em style="color:#64748B;font-size:10px;">Base: ingresos generados por el restaurante en el periodo ${topRest[0]?.periodo || 'actual'} (pedidos entregados). El porcentaje es la comision que el restaurante paga a DiDi Food sobre cada pedido entregado. La escala se revisa trimestralmente con base en el historial acumulado.</em><br/><br/>
+    &bull; Hasta $50,000 en ingresos del periodo → <strong>15% de comision a DiDi Food</strong>: restaurantes en incorporacion o crecimiento inicial. La comision mas alta cubre el soporte de onboarding y la visibilidad en la app durante la etapa de arranque.<br/>
+    &bull; $50,001 – $100,000 en ingresos del periodo → <strong>12% de comision a DiDi Food</strong>: restaurantes consolidados con flujo estable. La reduccion del 3% incentiva mayor volumen sin afectar la rentabilidad de la plataforma.<br/>
+    &bull; $100,001 – $200,000 en ingresos del periodo → <strong>10% de comision a DiDi Food</strong>: aliados de alto rendimiento. Comision preferencial como reconocimiento al volumen generado y para reducir el riesgo de desvinculacion.<br/>
+    &bull; Mas de $200,000 en ingresos del periodo → <strong>8% de comision a DiDi Food</strong>: socios estrategicos. Negociar condiciones personalizadas que pueden incluir exclusividad de categoria, posicion destacada en la app o co-inversion en campanas.<br/>
+    <em>Distribucion actual en el ranking: ${tier1} restaurante${tier1 !== 1 ? 's' : ''} al 15% · ${tier2} al 12% · ${tier3} al 10% · ${tier4} al 8%.</em>
   </div>
 </div>
 <div class="footer">DiDi Food Oaxaca · Reporte de Restaurantes · Generado el ${fecha()}</div>
 </body></html>`;
-    await descargar(html, 'Reporte Restaurantes DiDi Food');
+    await descargar(html, 'reporte-restaurantes');
     setGenerando(null);
   };
 
   const reporteConductores = async () => {
     if (!conductores) return;
     setGenerando('conductores');
+    const [porVehiculo, porZona] = await Promise.all([
+      fetchJSON(`${API}/conductores/por-vehiculo`).catch(() => []),
+      fetchJSON(`${API}/conductores/por-zona`).catch(() => []),
+    ]);
     const pctActivos = ((conductores.activos / conductores.total) * 100).toFixed(1);
     const htmlReac = reactivacion.slice(0, 10).map((c, i) => `
       <tr><td>${i + 1}</td><td>${c.nombre}</td><td>${c.tipo_vehiculo}</td><td>${c.zona}</td>
@@ -331,37 +407,63 @@ ${oportunidades.horas.length > 0 ? `
         color:${c.estatus === 'Inactivo' ? '#92400E' : '#991b1b'};">${c.estatus.toUpperCase()}</span></td>
       <td style="color:#854D0E;font-weight:bold">${c.calificacion}</td>
       <td>${c.bono_sugerido}</td></tr>`).join('');
+    const htmlVehiculo = porVehiculo.map((v: any) => `
+      <tr><td>${v.tipo_vehiculo}</td><td>${v.total}</td><td>${v.activos}</td>
+      <td>${v.calificacion}</td><td>${v.pedidos.toLocaleString()}</td>
+      <td>${v.tiempo_promedio > 0 ? v.tiempo_promedio + ' min' : 'Sin datos'}</td></tr>`).join('');
+    const htmlZona = porZona.map((z: any) => `
+      <tr><td>${z.zona}</td><td>${z.conductores}</td><td>${z.activos}</td>
+      <td>${z.pedidos_zona.toLocaleString()}</td><td>${z.ratio_pedidos_por_conductor}</td>
+      <td><span class="tag" style="background:${z.nivel_tipo === 'warn' ? '#FEE2E2' : z.nivel_tipo === 'alert' ? '#FEF3C7' : '#DCFCE7'};
+        color:${z.nivel_tipo === 'warn' ? '#991b1b' : z.nivel_tipo === 'alert' ? '#92400E' : '#166534'};">${z.nivel}</span></td>
+      </tr>`).join('');
     const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/>
 <style>${CSS_BASE}</style></head><body>
 <div class="hdr" style="background:#7C3AED;">
   <h1>Reporte de Conductores</h1>
-  <p>DiDi Food Oaxaca · ${fecha()}</p>
+  <p>DiDi Food Oaxaca · ${porVehiculo[0]?.periodo || porZona[0]?.periodo || ''} · Generado el ${fecha()}</p>
 </div>
 <div class="grid2">
   <div class="kpi" style="border-color:#16a34a;">
     <div class="lbl">Conductores activos</div>
     <div class="val" style="color:#16a34a;">${conductores.activos}</div>
-    <div class="tr">${pctActivos}% de la flota total</div>
+    <div class="tr">${pctActivos}% de la flota · <em>Estado actual</em></div>
   </div>
   <div class="kpi" style="border-color:#64748B;">
     <div class="lbl">Inactivos</div>
     <div class="val" style="color:#64748B;">${conductores.inactivos}</div>
-    <div class="tr">Con potencial de reactivacion</div>
+    <div class="tr">Con potencial de reactivacion · <em>Estado actual</em></div>
   </div>
   <div class="kpi" style="border-color:#dc2626;">
     <div class="lbl">Sancionados</div>
     <div class="val" style="color:#dc2626;">${conductores.sancionados}</div>
-    <div class="tr">Requieren revision inmediata</div>
+    <div class="tr">Requieren revision inmediata · <em>Estado actual</em></div>
   </div>
   <div class="kpi" style="border-color:#F59E0B;">
     <div class="lbl">Calificacion promedio</div>
     <div class="val" style="color:#92400E;">${conductores.calificacion_promedio}</div>
-    <div class="tr">Total: ${conductores.total} conductores</div>
+    <div class="tr">Total: ${conductores.total} conductores · <em>Mes actual</em></div>
   </div>
 </div>
 <div class="sec">
-  <h2 style="border-color:#7C3AED;color:#7C3AED;">Conductores prioritarios para reactivacion</h2>
-  <p style="color:#64748B;margin-bottom:10px;font-size:11px;">Priorizados por calificacion historica</p>
+  <h2 style="border-color:#7C3AED;color:#7C3AED;">Rendimiento por tipo de vehiculo <span style="font-size:11px;font-weight:normal;color:#64748B;">— datos del periodo ${porVehiculo[0]?.periodo || ''}</span></h2>
+  <p style="color:#64748B;margin-bottom:10px;font-size:11px;">Pedidos y tiempo de entrega del periodo actual (${porVehiculo[0]?.periodo || 'mes en curso'}) por tipo de vehiculo. "Activos hoy" refleja el estado actual de la flota. Permite decidir en que perfil conviene enfocar el reclutamiento.</p>
+  <table>
+    <tr style="background:#7C3AED;"><th>Vehiculo</th><th>Total</th><th>Activos hoy</th><th>Calif. prom.</th><th>Pedidos (periodo)</th><th>T. entrega prom.</th></tr>
+    ${htmlVehiculo}
+  </table>
+</div>
+<div class="sec">
+  <h2 style="border-color:#7C3AED;color:#7C3AED;">Saturacion por zona <span style="font-size:11px;font-weight:normal;color:#64748B;">— estado actual + pedidos del periodo ${porZona[0]?.periodo || ''}</span></h2>
+  <p style="color:#64748B;margin-bottom:10px;font-size:11px;">Pedidos del periodo actual por zona. El ratio pedidos/conductor indica la presion de cada zona en el mes en curso. Un ratio alto significa que hay mas demanda de la que los conductores activos pueden absorber — estas zonas necesitan refuerzo prioritario.</p>
+  <table>
+    <tr style="background:#7C3AED;"><th>Zona</th><th>Conductores</th><th>Activos hoy</th><th>Pedidos (periodo)</th><th>Ratio ped/cond</th><th>Estado</th></tr>
+    ${htmlZona}
+  </table>
+</div>
+<div class="sec">
+  <h2 style="border-color:#7C3AED;color:#7C3AED;">Conductores prioritarios para reactivacion <span style="font-size:11px;font-weight:normal;color:#64748B;">— calificacion historica</span></h2>
+  <p style="color:#64748B;margin-bottom:10px;font-size:11px;">Conductores inactivos o sancionados priorizados por su calificacion acumulada historica. Reactivar conductores con buen historial es mas economico que reclutar nuevos.</p>
   <table>
     <tr style="background:#7C3AED;"><th>#</th><th>Nombre</th><th>Vehiculo</th><th>Zona</th>
     <th>Estatus</th><th>Calif.</th><th>Bono sugerido</th></tr>
@@ -377,15 +479,19 @@ ${oportunidades.horas.length > 0 ? `
   ${conductores.sancionados > 20 ? `<div class="note" style="border-color:#dc2626;background:#FEF2F2;">
     ALERTA: ${conductores.sancionados} conductores sancionados. Revisar causas y aplicar protocolo de reinsercion
     o baja definitiva segun politica vigente.
-  </div>` : ''}
+  <\/div>` : ''}
+  ${parseFloat(pctActivos) < 70 ? `<div class="note" style="border-color:#F59E0B;background:#FFFBEB;">
+    FLOTA POR DEBAJO DEL OBJETIVO: solo el ${pctActivos}% de los conductores esta activo (meta: 70%).
+    Activar programa de bonos de actividad para los inactivos con mejor calificacion.
+  <\/div>` : ''}
   <div class="note" style="border-color:#16a34a;background:#F0FDF4;">
     META DE ACTIVIDAD: mantener al menos el 70% de la flota activa por mes.
-    Actividad actual: ${pctActivos}%. ${parseFloat(pctActivos) < 70 ? 'Por debajo del objetivo — activar programa de bonos.' : 'Dentro del objetivo.'}
+    Actividad actual: ${pctActivos}%. ${parseFloat(pctActivos) >= 70 ? 'Dentro del objetivo.' : 'Requiere accion.'}
   </div>
 </div>
 <div class="footer">DiDi Food Oaxaca · Reporte de Conductores · Generado el ${fecha()}</div>
 </body></html>`;
-    await descargar(html, 'Reporte Conductores DiDi Food');
+    await descargar(html, 'reporte-conductores');
     setGenerando(null);
   };
 
@@ -433,13 +539,13 @@ ${oportunidades.horas.length > 0 ? `
 </div>
 ${rfm.length > 0 ? `
 <div class="sec">
-  <h2 style="border-color:#FF6B35;color:#FF6B35;">Segmentacion de clientes (RFM)</h2>
+  <h2 style="border-color:#FF6B35;color:#FF6B35;">Segmentacion de clientes (RFM) <span style="font-size:11px;font-weight:normal;color:#64748B;">— comportamiento acumulado historico</span></h2>
   <p style="color:#64748B;margin-bottom:10px;font-size:11px;">
-    Clasificacion por Recencia, Frecuencia y Valor economico. Permite priorizar acciones de retencion y reactivacion por segmento.
+    Clasificacion por Recencia (dias desde el ultimo pedido), Frecuencia (pedidos realizados) y Valor economico (LTV = gasto total historico por cliente). Permite priorizar acciones de retencion y reactivacion por segmento.
   </p>
   <table>
     <tr style="background:#FF6B35;"><th>Segmento</th><th>Clientes</th><th>%</th>
-    <th>Frecuencia prom.</th><th>LTV prom.</th><th>Recencia</th><th>Accion sugerida</th></tr>
+    <th>Frecuencia prom.</th><th>LTV prom. (hist.)</th><th>Recencia (dias)</th><th>Accion sugerida</th></tr>
     ${htmlRfm}
   </table>
   ${segCritico ? `<div class="note" style="border-color:#dc2626;background:#FEF2F2;">
@@ -449,24 +555,33 @@ ${rfm.length > 0 ? `
 </div>` : ''}
 ${adquisicion.length > 0 ? `
 <div class="sec">
-  <h2 style="border-color:#FF6B35;color:#FF6B35;">Canales de adquisicion</h2>
+  <h2 style="border-color:#FF6B35;color:#FF6B35;">Canales de adquisicion <span style="font-size:11px;font-weight:normal;color:#64748B;">— registros acumulados historicos</span></h2>
   <p style="color:#64748B;margin-bottom:10px;font-size:11px;">
-    Conversion = porcentaje de usuarios registrados que completaron al menos un pedido. Un canal con alta conversion es donde mas conviene invertir.
+    De donde llegaron los usuarios que se registraron en la plataforma y que porcentaje realizo al menos un pedido (conversion). Registros y conversiones acumulados desde el inicio de operaciones.
   </p>
+  <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:6px;padding:10px;margin-bottom:12px;font-size:11px;color:#475569;">
+    <strong>Glosario de canales:</strong><br/>
+    &bull; <strong>organico</strong> — usuario que encontro la app por busqueda propia en la tienda de apps (App Store / Google Play), sin ningun anuncio o referencia externa.<br/>
+    &bull; <strong>referido</strong> — llego por recomendacion directa de otro usuario. Canal de menor costo de adquisicion y mayor fidelidad historica.<br/>
+    &bull; <strong>promocion</strong> — captado mediante una campana activa con descuento, codigo o beneficio de bienvenida.<br/>
+    &bull; <strong>red_social</strong> — llego desde un anuncio o publicacion en redes sociales (Facebook, Instagram, TikTok, etc.).<br/>
+    <strong>Dispositivo:</strong> android / ios = app movil · web = acceso desde navegador de escritorio o movil.
+  </div>
   <table>
     <tr style="background:#FF6B35;"><th>Canal</th><th>Dispositivo</th><th>Registrados</th>
     <th>Primeros pedidos</th><th>Conversion</th><th>Ticket prom.</th></tr>
     ${htmlAdq}
   </table>
   ${canalTop ? `<div class="note" style="border-color:#2563eb;background:#EFF6FF;">
-    Canal lider: ${canalTop.canal} con ${canalTop.conversion_pct}% de conversion.
-    Priorizar inversion publicitaria en este canal para maximizar el retorno.
+    Canal lider: <strong>${canalTop.canal}</strong> con ${canalTop.conversion_pct}% de conversion.
+    Priorizar inversion publicitaria en este canal para maximizar el retorno sobre el costo de adquisicion.
   </div>` : ''}
 </div>` : ''}
 <div class="sec">
-  <h2 style="border-color:#FF6B35;color:#FF6B35;">Metodos de pago</h2>
+  <h2 style="border-color:#FF6B35;color:#FF6B35;">Metodos de pago <span style="font-size:11px;font-weight:normal;color:#64748B;">— pedidos acumulados historicos</span></h2>
+  <p style="color:#64748B;margin-bottom:10px;font-size:11px;">Distribucion de pedidos por metodo de pago desde el inicio de operaciones.</p>
   <table>
-    <tr style="background:#FF6B35;"><th>Metodo</th><th>Total pedidos</th><th>Participacion</th></tr>
+    <tr style="background:#FF6B35;"><th>Metodo</th><th>Pedidos (hist.)</th><th>Participacion</th></tr>
     ${htmlMp}
   </table>
   ${metodoEfec && metodoEfec.porcentaje > 40 ? `<div class="note" style="border-color:#dc2626;background:#FEF2F2;">
@@ -478,9 +593,34 @@ ${adquisicion.length > 0 ? `
     Meta: 60% de pagos digitales en 6 meses para reducir costos operativos.
   </div>
 </div>
+<div class="sec">
+  <h2 style="border-color:#64748B;color:#64748B;">Costos operativos asociados a pagos y canales</h2>
+  <p style="color:#64748B;margin-bottom:10px;font-size:11px;">Referencia de impacto operativo segun el metodo de pago y el canal de adquisicion. Estos factores afectan directamente el margen neto de la plataforma.</p>
+  <table>
+    <tr style="background:#64748B;"><th>Factor</th><th>Nivel de costo</th><th>Impacto operativo</th><th>Accion recomendada</th></tr>
+    <tr><td>Pago en efectivo</td><td style="color:#dc2626;font-weight:bold">Alto</td>
+      <td>Riesgo de robo para conductores, tiempo adicional de cambio, sin trazabilidad contable automatica</td>
+      <td>Incentivar migracion a digital; meta menos del 30%</td></tr>
+    <tr><td>Tarjeta de credito/debito</td><td style="color:#D97706;font-weight:bold">Medio</td>
+      <td>Comision bancaria por transaccion (tipicamente 2–3.5%). Mayor trazabilidad y menor riesgo logistico</td>
+      <td>Negociar tarifas preferenciales por volumen con el banco procesador</td></tr>
+    <tr><td>Transferencia / digital</td><td style="color:#16a34a;font-weight:bold">Bajo</td>
+      <td>Sin comision de terceros, liquidacion inmediata, trazabilidad total. Menor friccion para conductores</td>
+      <td>Promover activamente como metodo preferido; ofrecer beneficio al primer uso</td></tr>
+    <tr><td>Canal referido</td><td style="color:#16a34a;font-weight:bold">Muy bajo</td>
+      <td>Costo de adquisicion casi nulo; el usuario existente hace el trabajo de captacion</td>
+      <td>Activar programa de referidos con incentivo para quien refiere y para el nuevo usuario</td></tr>
+    <tr><td>Canal red_social / promocion</td><td style="color:#dc2626;font-weight:bold">Alto</td>
+      <td>Inversion publicitaria mas descuento de bienvenida. Rentable solo si la conversion y el LTV son altos</td>
+      <td>Medir LTV por canal; pausar canales donde el costo supere el LTV a 6 meses</td></tr>
+    <tr><td>Canal organico</td><td style="color:#16a34a;font-weight:bold">Bajo</td>
+      <td>Sin costo de adquisicion directo. Suele indicar buena reputacion de marca o posicionamiento en tienda</td>
+      <td>Mantener calificacion alta en App Store / Google Play; responder resenas publicas</td></tr>
+  </table>
+</div>
 <div class="footer">DiDi Food Oaxaca · Reporte de Usuarios · Generado el ${fecha()}</div>
 </body></html>`;
-    await descargar(html, 'Reporte Usuarios DiDi Food');
+    await descargar(html, 'reporte-usuarios');
     setGenerando(null);
   };
 
@@ -560,11 +700,21 @@ ${adquisicion.length > 0 ? `
           {/* Top productos vendidos */}
           {topVendidos.length > 0 && (
             <View style={[styles.card, { backgroundColor: Brand.cardGreen }]}>
-              <View style={styles.seccionHeader}>
-                <Ionicons name="flame-outline" size={18} color={Brand.green} />
-                <Text style={[styles.seccionTitulo, { color: Brand.green }]}>Top productos mas vendidos</Text>
+              <View style={[styles.seccionHeader, { justifyContent: 'space-between' }]}>
+                <View style={styles.seccionHeader}>
+                  <Ionicons name="flame-outline" size={18} color={Brand.green} />
+                  <Text style={[styles.seccionTitulo, { color: Brand.green }]}>Top productos mas vendidos</Text>
+                </View>
+                <View style={{backgroundColor:'#DCFCE7',paddingHorizontal:6,paddingVertical:2,borderRadius:4}}>
+                  <Text style={{fontSize:9,color:'#166534',fontWeight:'700'}}>MES ACTUAL</Text>
+                </View>
               </View>
-              <Text style={styles.sub}>Productos con mas unidades vendidas historicamente. Garantizar su disponibilidad permanente evita pedidos cancelados por falta de stock y maximiza ingresos.</Text>
+              {topVendidos[0]?.periodo ? (
+                <Text style={[styles.sub, { color: Brand.green, fontWeight: '600', marginBottom: 2 }]}>
+                  Periodo: {topVendidos[0].periodo}
+                </Text>
+              ) : null}
+              <Text style={styles.sub}>Productos con mas unidades vendidas en el periodo actual. Garantizar su disponibilidad permanente evita pedidos cancelados por falta de stock y maximiza ingresos.</Text>
               {topVendidos.map((p, i) => (
                 <View key={i} style={styles.prodRow}>
                   <View style={[styles.precioBadge, {
@@ -602,9 +752,14 @@ ${adquisicion.length > 0 ? `
           {/* Oportunidades de horario */}
           {oportunidades.horas.length > 0 && (
             <View style={[styles.card, { backgroundColor: Brand.cardOrange }]}>
-              <View style={styles.seccionHeader}>
-                <Ionicons name="time-outline" size={18} color={Brand.accent} />
-                <Text style={[styles.seccionTitulo, { color: Brand.accent }]}>Oportunidades de horario</Text>
+              <View style={[styles.seccionHeader, { justifyContent: 'space-between' }]}>
+                <View style={styles.seccionHeader}>
+                  <Ionicons name="time-outline" size={18} color={Brand.accent} />
+                  <Text style={[styles.seccionTitulo, { color: Brand.accent }]}>Oportunidades de horario</Text>
+                </View>
+                <View style={{backgroundColor:'#F1F5F9',paddingHorizontal:6,paddingVertical:2,borderRadius:4}}>
+                  <Text style={{fontSize:9,color:'#64748B',fontWeight:'700'}}>HISTÓRICO</Text>
+                </View>
               </View>
               <Text style={styles.sub}>
                 Las 3 combinaciones de dia y hora con menor volumen de pedidos entregados, considerando solo horario de operacion (7:00 a 23:00). Calculado sobre todo el historial de la plataforma.
@@ -669,6 +824,9 @@ ${adquisicion.length > 0 ? `
               <View style={styles.seccionHeader}>
                 <Ionicons name="star-outline" size={18} color={Brand.blue} />
                 <Text style={[styles.seccionTitulo, { color: Brand.blue }]}>Candidatos Premium</Text>
+                <View style={{backgroundColor:'#F3E8FF',paddingHorizontal:6,paddingVertical:2,borderRadius:4}}>
+                  <Text style={{fontSize:9,color:'#7C3AED',fontWeight:'700'}}>CATÁLOGO</Text>
+                </View>
               </View>
               <TouchableOpacity onPress={() => setModalPremium(true)} style={[styles.chipFiltro, { borderColor: Brand.blue }]}>
                 <Ionicons name="options-outline" size={13} color={Brand.blue} />
@@ -694,6 +852,9 @@ ${adquisicion.length > 0 ? `
               <View style={styles.seccionHeader}>
                 <Ionicons name="grid-outline" size={18} color={Brand.accent} />
                 <Text style={[styles.seccionTitulo, { color: Brand.accent }]}>Analisis por categoria</Text>
+                <View style={{backgroundColor:'#F3E8FF',paddingHorizontal:6,paddingVertical:2,borderRadius:4}}>
+                  <Text style={{fontSize:9,color:'#7C3AED',fontWeight:'700'}}>CATÁLOGO</Text>
+                </View>
               </View>
               <TouchableOpacity onPress={() => { setCantidadCatInput(cantidadCat > 0 ? String(cantidadCat) : String(categorias.length)); setModalCat(true); }} style={styles.chipFiltro}>
                 <Ionicons name="options-outline" size={13} color={Brand.accent} />
@@ -727,6 +888,9 @@ ${adquisicion.length > 0 ? `
               <View style={styles.seccionHeader}>
                 <Ionicons name="trending-up-outline" size={18} color={Brand.green} />
                 <Text style={[styles.seccionTitulo, { color: Brand.green }]}>Ingresos por cocina</Text>
+                <View style={{backgroundColor:'#DCFCE7',paddingHorizontal:6,paddingVertical:2,borderRadius:4}}>
+                  <Text style={{fontSize:9,color:'#166534',fontWeight:'700'}}>MES ACTUAL</Text>
+                </View>
               </View>
               <TouchableOpacity onPress={() => setModalIngCocina(true)} style={[styles.chipFiltro, { borderColor: Brand.green }]}>
                 <Ionicons name="options-outline" size={13} color={Brand.green} />
@@ -764,9 +928,14 @@ ${adquisicion.length > 0 ? `
           {/* Segmentacion RFM */}
           {rfm.length > 0 && (
             <View style={[styles.card, { backgroundColor: Brand.cardBlue }]}>
-              <View style={styles.seccionHeader}>
-                <Ionicons name="people-circle-outline" size={18} color={Brand.blue} />
-                <Text style={[styles.seccionTitulo, { color: Brand.blue }]}>Segmentacion RFM de usuarios</Text>
+              <View style={[styles.seccionHeader, { justifyContent: 'space-between' }]}>
+                <View style={styles.seccionHeader}>
+                  <Ionicons name="people-circle-outline" size={18} color={Brand.blue} />
+                  <Text style={[styles.seccionTitulo, { color: Brand.blue }]}>Segmentacion RFM de usuarios</Text>
+                </View>
+                <View style={{backgroundColor:'#F1F5F9',paddingHorizontal:6,paddingVertical:2,borderRadius:4}}>
+                  <Text style={{fontSize:9,color:'#64748B',fontWeight:'700'}}>HISTÓRICO</Text>
+                </View>
               </View>
               <Text style={styles.sub}>
                 Clasifica a los usuarios segun tres factores: hace cuanto hicieron su ultimo pedido (Recencia), con que frecuencia piden (Frecuencia) y cuanto gastan (Monetario). Cada segmento requiere una estrategia diferente.
@@ -805,11 +974,26 @@ ${adquisicion.length > 0 ? `
           {/* Canal de adquisicion */}
           {adquisicion.length > 0 && (
             <View style={[styles.card, { backgroundColor: Brand.cardOrange }]}>
-              <View style={styles.seccionHeader}>
-                <Ionicons name="funnel-outline" size={18} color={Brand.accent} />
-                <Text style={[styles.seccionTitulo, { color: Brand.accent }]}>Canal de adquisicion</Text>
+              <View style={[styles.seccionHeader, { justifyContent: 'space-between' }]}>
+                <View style={styles.seccionHeader}>
+                  <Ionicons name="funnel-outline" size={18} color={Brand.accent} />
+                  <Text style={[styles.seccionTitulo, { color: Brand.accent }]}>Canal de adquisicion</Text>
+                </View>
+                <View style={{backgroundColor:'#F1F5F9',paddingHorizontal:6,paddingVertical:2,borderRadius:4}}>
+                  <Text style={{fontSize:9,color:'#64748B',fontWeight:'700'}}>HISTÓRICO</Text>
+                </View>
               </View>
               <Text style={styles.sub}>De donde vienen los usuarios que se registran y que porcentaje realiza su primera compra (conversion). Un canal con alta conversion es donde mas conviene invertir presupuesto de marketing.</Text>
+              <View style={{ backgroundColor: Brand.card, borderRadius: 8, padding: 10, marginBottom: 8 }}>
+                <Text style={[styles.catSub, { fontWeight: '600', marginBottom: 4 }]}>Canales:</Text>
+                <Text style={styles.catSub}>• <Text style={{ fontWeight: '600' }}>organico</Text> — usuario que encontro la app por busqueda propia en tienda de apps</Text>
+                <Text style={styles.catSub}>• <Text style={{ fontWeight: '600' }}>referido</Text> — llego por recomendacion directa de otro usuario</Text>
+                <Text style={styles.catSub}>• <Text style={{ fontWeight: '600' }}>promocion</Text> — captado mediante una campana con descuento o codigo</Text>
+                <Text style={styles.catSub}>• <Text style={{ fontWeight: '600' }}>red_social</Text> — llego desde un anuncio o publicacion en redes sociales</Text>
+                <Text style={[styles.catSub, { fontWeight: '600', marginTop: 6, marginBottom: 4 }]}>Dispositivo:</Text>
+                <Text style={styles.catSub}>• <Text style={{ fontWeight: '600' }}>android / ios</Text> — uso la app movil</Text>
+                <Text style={styles.catSub}>• <Text style={{ fontWeight: '600' }}>web</Text> — accedio desde un navegador</Text>
+              </View>
               {adquisicion.map((a, i) => (
                 <View key={i} style={styles.catRow}>
                   <View style={{ flex: 1 }}>
@@ -841,9 +1025,14 @@ ${adquisicion.length > 0 ? `
           )}
 
           <View style={[styles.card, { backgroundColor: Brand.cardPurple }]}>
-            <View style={styles.seccionHeader}>
-              <Ionicons name="card-outline" size={18} color={Brand.purple} />
-              <Text style={[styles.seccionTitulo, { color: Brand.purple }]}>Metodos de pago</Text>
+            <View style={[styles.seccionHeader, { justifyContent: 'space-between' }]}>
+              <View style={styles.seccionHeader}>
+                <Ionicons name="card-outline" size={18} color={Brand.purple} />
+                <Text style={[styles.seccionTitulo, { color: Brand.purple }]}>Metodos de pago</Text>
+              </View>
+              <View style={{backgroundColor:'#F1F5F9',paddingHorizontal:6,paddingVertical:2,borderRadius:4}}>
+                <Text style={{fontSize:9,color:'#64748B',fontWeight:'700'}}>HISTÓRICO</Text>
+              </View>
             </View>
             <Text style={styles.sub}>Como prefieren pagar los usuarios. Un alto porcentaje en efectivo implica mayor riesgo operativo para conductores y costos de manejo. Meta recomendada: menos del 30% en efectivo.</Text>
             <View style={{ alignItems: 'center', marginVertical: 16 }}>

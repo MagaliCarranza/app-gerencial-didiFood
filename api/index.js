@@ -52,7 +52,10 @@ app.get('/kpi/total-pedidos', async (req, res) => {
         COUNT(*) FILTER (
           WHERE DATE_TRUNC('month', fecha_pedido) = ${ULTIMO_MES} - INTERVAL '1 month'
         ) AS mes_anterior,
-        TO_CHAR(${ULTIMO_MES}, 'Month YYYY') AS periodo
+        TO_CHAR(${ULTIMO_MES}, 'Month YYYY') AS periodo,
+        (SELECT MAX(cnt) FROM (
+          SELECT COUNT(*) AS cnt FROM pedidos GROUP BY DATE_TRUNC('month', fecha_pedido)
+        ) t) AS mejor_mes
       FROM pedidos
     `);
     const r = rows[0];
@@ -60,6 +63,7 @@ app.get('/kpi/total-pedidos', async (req, res) => {
       total_historico: parseInt(r.total_historico),
       mes_actual:      parseInt(r.mes_actual),
       mes_anterior:    parseInt(r.mes_anterior),
+      mejor_mes:       parseInt(r.mejor_mes) || 0,
       variacion:       variacion(r.mes_actual, r.mes_anterior),
       periodo:         r.periodo.trim(),
     });
@@ -84,7 +88,12 @@ app.get('/kpi/ingresos', async (req, res) => {
         ), 0)::NUMERIC, 2) AS mes_anterior,
         ROUND(COALESCE(SUM(total) FILTER (
           WHERE estatus_pedido = 'Entregado'
-        ), 0)::NUMERIC, 2) AS total_historico
+        ), 0)::NUMERIC, 2) AS total_historico,
+        (SELECT ROUND(MAX(s)::NUMERIC, 2) FROM (
+          SELECT SUM(total) AS s FROM pedidos
+          WHERE estatus_pedido = 'Entregado'
+          GROUP BY DATE_TRUNC('month', fecha_pedido)
+        ) t) AS mejor_mes
       FROM pedidos
     `);
     const r = rows[0];
@@ -92,6 +101,7 @@ app.get('/kpi/ingresos', async (req, res) => {
       total_historico: parseFloat(r.total_historico),
       mes_actual:      parseFloat(r.mes_actual),
       mes_anterior:    parseFloat(r.mes_anterior),
+      mejor_mes:       parseFloat(r.mejor_mes) || 0,
       variacion:       variacion(r.mes_actual, r.mes_anterior),
     });
   } catch (err) {
@@ -146,13 +156,20 @@ app.get('/kpi/tiempo-entrega', async (req, res) => {
         ), 0)::NUMERIC, 1) AS mes_anterior,
         ROUND(COALESCE(AVG(tiempo_entrega_min) FILTER (
           WHERE estatus_pedido = 'Entregado'
-        ), 0)::NUMERIC, 1) AS promedio_historico
+        ), 0)::NUMERIC, 1) AS promedio_historico,
+        (SELECT ROUND(MIN(a)::NUMERIC, 1) FROM (
+          SELECT AVG(tiempo_entrega_min) AS a FROM pedidos
+          WHERE estatus_pedido = 'Entregado' AND tiempo_entrega_min IS NOT NULL
+          GROUP BY DATE_TRUNC('month', fecha_pedido)
+          HAVING COUNT(*) > 10
+        ) t) AS mejor_mes
       FROM pedidos
       WHERE tiempo_entrega_min IS NOT NULL
     `);
     const r = rows[0];
     res.json({
       promedio_historico: parseFloat(r.promedio_historico),
+      mejor_mes:          parseFloat(r.mejor_mes) || 0,
       mes_actual:         parseFloat(r.mes_actual),
       mes_anterior:       parseFloat(r.mes_anterior),
       variacion:          variacion(r.mes_actual, r.mes_anterior),
@@ -269,14 +286,17 @@ app.get('/kpi/pedidos-colonia', async (req, res) => {
 
 app.get('/kpi/ingresos-cocina', async (req, res) => {
   try {
+    const ULTIMO_MES = `(SELECT DATE_TRUNC('month', fecha_pedido) FROM pedidos GROUP BY 1 HAVING COUNT(*) > 1000 ORDER BY 1 DESC LIMIT 1)`;
     const { rows } = await pool.query(`
       SELECT
         tipo_cocina,
         COUNT(*) AS total_pedidos,
         ROUND(SUM(total)::NUMERIC, 2) AS ingresos,
-        ROUND(AVG(subtotal)::NUMERIC, 2) AS ticket_promedio
+        ROUND(AVG(subtotal)::NUMERIC, 2) AS ticket_promedio,
+        TO_CHAR(${ULTIMO_MES}, 'Month YYYY') AS periodo
       FROM pedidos
       WHERE estatus_pedido = 'Entregado'
+        AND DATE_TRUNC('month', fecha_pedido) = ${ULTIMO_MES}
       GROUP BY tipo_cocina
       ORDER BY ingresos DESC
     `);
@@ -285,6 +305,7 @@ app.get('/kpi/ingresos-cocina', async (req, res) => {
       total_pedidos:   parseInt(r.total_pedidos),
       ingresos:        parseFloat(r.ingresos),
       ticket_promedio: parseFloat(r.ticket_promedio),
+      periodo:         r.periodo?.trim() ?? '',
     })));
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -352,16 +373,20 @@ app.get('/kpi/conductores', async (req, res) => {
         COUNT(*) FILTER (WHERE estatus = 'Activo')     AS activos,
         COUNT(*) FILTER (WHERE estatus = 'Inactivo')   AS inactivos,
         COUNT(*) FILTER (WHERE estatus = 'Sancionado') AS sancionados,
-        ROUND(AVG(calificacion_promedio)::NUMERIC, 2)  AS calificacion_promedio
+        (SELECT ROUND(AVG(calificacion_conductor)::NUMERIC, 2)
+         FROM calificaciones
+         WHERE DATE_TRUNC('month', fecha) = ${ULTIMO_MES}
+           AND calificacion_conductor IS NOT NULL
+        ) AS calificacion_mes_actual
       FROM conductores
     `);
     const r = rows[0];
     res.json({
-      total:                parseInt(r.total),
-      activos:              parseInt(r.activos),
-      inactivos:            parseInt(r.inactivos),
-      sancionados:          parseInt(r.sancionados),
-      calificacion_promedio: parseFloat(r.calificacion_promedio),
+      total:                  parseInt(r.total),
+      activos:                parseInt(r.activos),
+      inactivos:              parseInt(r.inactivos),
+      sancionados:            parseInt(r.sancionados),
+      calificacion_promedio:  parseFloat(r.calificacion_mes_actual) || 0,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -578,19 +603,23 @@ app.get('/restaurantes/distribucion', async (req, res) => {
         COUNT(DISTINCT r.id_restaurante) AS restaurantes,
         COUNT(DISTINCT r.tipo_cocina)    AS tipos_cocina,
         ROUND(AVG(r.calificacion_promedio)::NUMERIC, 2) AS calificacion_promedio,
-        COUNT(p.id_pedido)               AS pedidos_recibidos
+        COUNT(p.id_pedido)               AS pedidos_recibidos,
+        TO_CHAR(${ULTIMO_MES}, 'Month YYYY') AS periodo
       FROM restaurantes r
       LEFT JOIN pedidos p ON p.id_restaurante = r.id_restaurante
+        AND DATE_TRUNC('month', p.fecha_pedido) = ${ULTIMO_MES}
       GROUP BY r.colonia, r.municipio
-      ORDER BY restaurantes DESC
+      ORDER BY pedidos_recibidos DESC
     `);
+    const periodo = rows[0]?.periodo?.trim() ?? '';
     res.json(rows.map(r => ({
-      colonia:              r.colonia,
-      municipio:            r.municipio,
-      restaurantes:         parseInt(r.restaurantes),
-      tipos_cocina:         parseInt(r.tipos_cocina),
-      calificacion:         parseFloat(r.calificacion_promedio),
-      pedidos_recibidos:    parseInt(r.pedidos_recibidos),
+      colonia:           r.colonia,
+      municipio:         r.municipio,
+      restaurantes:      parseInt(r.restaurantes),
+      tipos_cocina:      parseInt(r.tipos_cocina),
+      calificacion:      parseFloat(r.calificacion_promedio),
+      pedidos_recibidos: parseInt(r.pedidos_recibidos),
+      periodo,
     })));
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -609,6 +638,7 @@ app.get('/restaurantes/ranking', async (req, res) => {
         r.tipo_cocina,
         r.colonia,
         r.calificacion_promedio,
+        TO_CHAR(${ULTIMO_MES}, 'Month YYYY') AS periodo,
         COUNT(p.id_pedido)                                           AS total_pedidos,
         COUNT(p.id_pedido) FILTER (WHERE p.estatus_pedido = 'Entregado') AS entregados,
         ROUND(SUM(p.total) FILTER (WHERE p.estatus_pedido = 'Entregado')::NUMERIC, 2) AS ingresos,
@@ -620,13 +650,16 @@ app.get('/restaurantes/ranking', async (req, res) => {
         ) AS tasa_cancelacion
       FROM restaurantes r
       LEFT JOIN pedidos p ON p.id_restaurante = r.id_restaurante
+        AND DATE_TRUNC('month', p.fecha_pedido) = ${ULTIMO_MES}
       GROUP BY r.id_restaurante, r.nombre, r.tipo_cocina, r.colonia, r.calificacion_promedio
       ORDER BY ingresos DESC NULLS LAST
       LIMIT $1
     `, [limit]);
 
     const total_ingresos_res = await pool.query(
-      `SELECT SUM(total) AS total FROM pedidos WHERE estatus_pedido = 'Entregado'`
+      `SELECT SUM(total) AS total FROM pedidos
+       WHERE estatus_pedido = 'Entregado'
+         AND DATE_TRUNC('month', fecha_pedido) = ${ULTIMO_MES}`
     );
     const total_ing = parseFloat(total_ingresos_res.rows[0].total) || 1;
 
@@ -642,9 +675,8 @@ app.get('/restaurantes/ranking', async (req, res) => {
 
       let sugerencia = '';
       let sugerencia_tipo = '';
-      if (tasa_cancel > 15)    { sugerencia = 'Alta cancelación — revisar operación';    sugerencia_tipo = 'warn'; }
-      else if (ingresos === 0) { sugerencia = 'Sin ingresos registrados';                sugerencia_tipo = 'error'; }
-      else if (i >= limit - 3) { sugerencia = 'Marketing prioritario recomendado';       sugerencia_tipo = 'info'; }
+      if (tasa_cancel > 15)       { sugerencia = 'Alta cancelacion — revisar operacion'; sugerencia_tipo = 'warn'; }
+      else if (ingresos === 0)    { sugerencia = 'Sin ingresos en el periodo';           sugerencia_tipo = 'warn'; }
       else if (participacion > 2) { sugerencia = 'Candidato a visibilidad premium';      sugerencia_tipo = 'ok'; }
 
       return {
@@ -654,6 +686,7 @@ app.get('/restaurantes/ranking', async (req, res) => {
         tipo_cocina:        r.tipo_cocina,
         colonia:            r.colonia,
         calificacion:       parseFloat(r.calificacion_promedio),
+        periodo:            r.periodo?.trim() ?? '',
         total_pedidos:      parseInt(r.total_pedidos),
         entregados:         parseInt(r.entregados),
         ingresos,
@@ -681,8 +714,10 @@ app.get('/restaurantes/por-cocina', async (req, res) => {
         COUNT(*) FILTER (WHERE estatus_pedido = 'Entregado') AS pedidos_entregados,
         ROUND(SUM(total) FILTER (WHERE estatus_pedido = 'Entregado')::NUMERIC, 2) AS ingresos,
         ROUND(100.0 * COUNT(*) FILTER (WHERE estatus_pedido = 'Entregado')
-          / NULLIF(SUM(COUNT(*)) OVER(), 0)::NUMERIC, 2) AS participacion_pct
+          / NULLIF(SUM(COUNT(*)) OVER(), 0)::NUMERIC, 2) AS participacion_pct,
+        TO_CHAR(${ULTIMO_MES}, 'Month YYYY') AS periodo
       FROM pedidos
+      WHERE DATE_TRUNC('month', fecha_pedido) = ${ULTIMO_MES}
       GROUP BY tipo_cocina
       ORDER BY ingresos DESC
     `);
@@ -721,12 +756,13 @@ app.get('/conductores/por-vehiculo', async (req, res) => {
         c.tipo_vehiculo,
         COUNT(*) AS total_conductores,
         COUNT(*) FILTER (WHERE c.estatus = 'Activo') AS activos,
-        ROUND(AVG(c.calificacion_promedio)::NUMERIC, 2) AS calificacion_promedio,
         COUNT(p.id_pedido) AS pedidos_realizados,
-        ROUND(AVG(p.tiempo_entrega_min)::NUMERIC, 1) AS tiempo_entrega_promedio
+        ROUND(AVG(p.tiempo_entrega_min)::NUMERIC, 1) AS tiempo_entrega_promedio,
+        TO_CHAR(${ULTIMO_MES}, 'Month YYYY') AS periodo
       FROM conductores c
       LEFT JOIN pedidos p ON p.id_conductor = c.id_conductor
         AND p.estatus_pedido = 'Entregado'
+        AND DATE_TRUNC('month', p.fecha_pedido) = ${ULTIMO_MES}
       GROUP BY c.tipo_vehiculo
       ORDER BY pedidos_realizados DESC
     `);
@@ -742,12 +778,12 @@ app.get('/conductores/por-vehiculo', async (req, res) => {
       else if (volumen_pct < 30)  sugerencia = 'Bajo volumen — evaluar necesidad en la flota';
 
       return {
-        tipo_vehiculo:       r.tipo_vehiculo,
-        total:               parseInt(r.total_conductores),
-        activos:             parseInt(r.activos),
-        calificacion:        parseFloat(r.calificacion_promedio),
-        pedidos:             parseInt(r.pedidos_realizados),
-        tiempo_promedio:     parseFloat(r.tiempo_entrega_promedio) || 0,
+        tipo_vehiculo:   r.tipo_vehiculo,
+        total:           parseInt(r.total_conductores),
+        activos:         parseInt(r.activos),
+        pedidos:         parseInt(r.pedidos_realizados),
+        tiempo_promedio: parseFloat(r.tiempo_entrega_promedio) || 0,
+        periodo:         r.periodo?.trim() ?? '',
         volumen_pct,
         sugerencia,
       };
@@ -769,8 +805,11 @@ app.get('/conductores/por-zona', async (req, res) => {
     `);
 
     const demanda = await pool.query(`
-      SELECT colonia_entrega AS zona, COUNT(*) AS pedidos
-      FROM pedidos WHERE estatus_pedido = 'Entregado'
+      SELECT colonia_entrega AS zona, COUNT(*) AS pedidos,
+        TO_CHAR(${ULTIMO_MES}, 'Month YYYY') AS periodo
+      FROM pedidos
+      WHERE estatus_pedido = 'Entregado'
+        AND DATE_TRUNC('month', fecha_pedido) = ${ULTIMO_MES}
       GROUP BY colonia_entrega ORDER BY pedidos DESC
     `);
 
@@ -786,10 +825,11 @@ app.get('/conductores/por-zona', async (req, res) => {
       else if (ratio > 500) { nivel = 'Zona con presion — monitorear';          nivel_tipo = 'alert'; }
 
       return {
-        zona:       r.zona_operacion,
+        zona:        r.zona_operacion,
         conductores: parseInt(r.conductores),
-        activos:    parseInt(r.activos),
+        activos:     parseInt(r.activos),
         pedidos_zona,
+        periodo:     demanda.rows[0]?.periodo?.trim() ?? '',
         ratio_pedidos_por_conductor: ratio,
         nivel,
         nivel_tipo,
@@ -1039,9 +1079,10 @@ app.get('/conductores/tiempos-por-zona', async (req, res) => {
       JOIN conductores c ON c.id_conductor = p.id_conductor
       WHERE p.estatus_pedido = 'Entregado'
         AND p.tiempo_entrega_min IS NOT NULL
+        AND p.id_conductor IS NOT NULL
         AND EXTRACT(YEAR FROM p.fecha_pedido)::INT = $1
       GROUP BY p.colonia_entrega, c.id_conductor, c.nombre, c.apellido_paterno, c.tipo_vehiculo
-      HAVING COUNT(p.id_pedido) >= 5
+      HAVING COUNT(p.id_pedido) >= 1
       ORDER BY p.colonia_entrega, tiempo_promedio ASC
     `, [anio]);
 
@@ -1072,6 +1113,7 @@ app.get('/conductores/tiempos-por-zona', async (req, res) => {
 app.get('/productos/top-vendidos', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 15;
+    const ULTIMO_MES = `(SELECT DATE_TRUNC('month', fecha_pedido) FROM pedidos GROUP BY 1 HAVING COUNT(*) > 1000 ORDER BY 1 DESC LIMIT 1)`;
     const { rows } = await pool.query(`
       SELECT
         pr.nombre_producto,
@@ -1081,12 +1123,14 @@ app.get('/productos/top-vendidos', async (req, res) => {
         SUM(dp.cantidad)::INT            AS unidades_vendidas,
         COUNT(DISTINCT dp.id_pedido)     AS pedidos_con_producto,
         ROUND(AVG(dp.precio_unitario)::NUMERIC, 2) AS precio_promedio,
-        ROUND(SUM(dp.subtotal_linea)::NUMERIC, 2)  AS ingreso_total
+        ROUND(SUM(dp.subtotal_linea)::NUMERIC, 2)  AS ingreso_total,
+        TO_CHAR(${ULTIMO_MES}, 'Month YYYY') AS periodo
       FROM detalle_pedidos dp
       JOIN productos   pr ON pr.id_producto    = dp.id_producto
       JOIN pedidos     p  ON p.id_pedido       = dp.id_pedido
       JOIN restaurantes r  ON r.id_restaurante = pr.id_restaurante
       WHERE p.estatus_pedido = 'Entregado'
+        AND DATE_TRUNC('month', p.fecha_pedido) = ${ULTIMO_MES}
       GROUP BY pr.id_producto, pr.nombre_producto, pr.categoria, r.nombre, r.tipo_cocina
       ORDER BY unidades_vendidas DESC
       LIMIT $1
@@ -1102,6 +1146,7 @@ app.get('/productos/top-vendidos', async (req, res) => {
       pedidos:            parseInt(r.pedidos_con_producto),
       precio_promedio:    parseFloat(r.precio_promedio),
       ingreso_total:      parseFloat(r.ingreso_total),
+      periodo:            r.periodo?.trim() ?? '',
     })));
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1322,8 +1367,9 @@ app.get('/calificaciones/restaurantes', async (req, res) => {
         COUNT(*) FILTER (WHERE c.comentario IS NOT NULL)        AS con_comentario
       FROM restaurantes r
       JOIN calificaciones c ON c.id_restaurante = r.id_restaurante
+        AND DATE_TRUNC('month', c.fecha) = ${ULTIMO_MES}
       GROUP BY r.id_restaurante, r.nombre, r.tipo_cocina, r.colonia
-      HAVING COUNT(c.id_calificacion) >= 5
+      HAVING COUNT(c.id_calificacion) >= 1
       ORDER BY calificacion_real DESC
       LIMIT $1
     `, [limit]);
@@ -1368,15 +1414,17 @@ app.get('/calificaciones/conductores', async (req, res) => {
         c.tipo_vehiculo,
         c.zona_operacion,
         c.estatus,
-        COUNT(cal.id_calificacion)                        AS total_reseñas,
+        COUNT(cal.id_calificacion)                         AS total_reseñas,
         ROUND(AVG(cal.calificacion_conductor)::NUMERIC, 2) AS calificacion_real,
         COUNT(*) FILTER (WHERE cal.calificacion_conductor >= 4) AS reseñas_positivas,
-        COUNT(*) FILTER (WHERE cal.calificacion_conductor <= 2) AS reseñas_negativas
+        COUNT(*) FILTER (WHERE cal.calificacion_conductor <= 2) AS reseñas_negativas,
+        TO_CHAR(${ULTIMO_MES}, 'Month YYYY') AS periodo
       FROM conductores c
       JOIN calificaciones cal ON cal.id_conductor = c.id_conductor
+        AND DATE_TRUNC('month', cal.fecha) = ${ULTIMO_MES}
       WHERE c.estatus = 'Activo'
       GROUP BY c.id_conductor, c.nombre, c.apellido_paterno, c.tipo_vehiculo, c.zona_operacion, c.estatus
-      HAVING COUNT(cal.id_calificacion) >= 5
+      HAVING COUNT(cal.id_calificacion) >= 1
       ORDER BY calificacion_real DESC
       LIMIT $1
     `, [limit]);
@@ -1395,6 +1443,7 @@ app.get('/calificaciones/conductores', async (req, res) => {
         nombre:            r.nombre,
         tipo_vehiculo:     r.tipo_vehiculo,
         zona:              r.zona_operacion,
+        periodo:           r.periodo?.trim() ?? '',
         total_reseñas:     total,
         calificacion_real: cal,
         pct_positivas:     total > 0 ? parseFloat(((pos/total)*100).toFixed(1)) : 0,

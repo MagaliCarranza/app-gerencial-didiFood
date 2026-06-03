@@ -99,6 +99,11 @@ export default function InicioScreen() {
       <View style={styles.headerBg}>
         <Text style={styles.titulo}>DiDi Food</Text>
         <Text style={styles.subtitulo}>Panel gerencial · DiDi Food Oaxaca</Text>
+        {pedidos.periodo ? (
+          <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)', marginTop: 4 }}>
+            Datos del periodo: {pedidos.periodo}
+          </Text>
+        ) : null}
       </View>
 
       {/* Alertas automaticas */}
@@ -116,7 +121,7 @@ export default function InicioScreen() {
           <KpiCard
             label="Pedidos este mes"
             value={pedidos.mes_actual.toLocaleString()}
-            sub={`${pedidos.total_historico.toLocaleString()} historico`}
+            sub={pedidos.mejor_mes > 0 ? `Mejor mes: ${pedidos.mejor_mes.toLocaleString()} pedidos` : undefined}
             variacion={pedidos.variacion}
             icon="receipt-outline"
             color={Brand.blue}
@@ -127,7 +132,7 @@ export default function InicioScreen() {
           <KpiCard
             label="Tiempo entrega"
             value={`${tiempo.mes_actual} min`}
-            sub={`Historico: ${tiempo.promedio_historico} min`}
+            sub={tiempo.mejor_mes > 0 ? `Mejor mes: ${tiempo.mejor_mes} min promedio` : undefined}
             variacion={tiempo.variacion}
             inv
             icon="time-outline"
@@ -141,7 +146,7 @@ export default function InicioScreen() {
       <KpiCard
         label="Ingresos del mes"
         value={`$${ingresos.mes_actual.toLocaleString()}`}
-        sub={`Historico total: $${ingresos.total_historico.toLocaleString()}`}
+        sub={ingresos.mejor_mes > 0 ? `Mejor mes: $${ingresos.mejor_mes.toLocaleString()}` : undefined}
         variacion={ingresos.variacion}
         icon="cash-outline"
         color={Brand.accent}
@@ -162,7 +167,6 @@ export default function InicioScreen() {
           <KpiCard
             label="Cancelaciones"
             value={`${cancel.tasa_actual}%`}
-            sub={`${cancel.total_cancelados.toLocaleString()} cancelados`}
             variacion={cancel.variacion}
             inv
             icon="close-circle-outline"
@@ -191,7 +195,11 @@ export default function InicioScreen() {
             <Text style={styles.statLbl}>Sancionados</Text>
           </View>
         </View>
-        <Text style={styles.sub}>Calificacion promedio: {conductores.calificacion_promedio}</Text>
+        <Text style={styles.sub}>
+          Calificacion promedio este mes: {conductores.calificacion_promedio > 0 ? conductores.calificacion_promedio : '—'}
+          {'\n'}
+          <Text style={{ color: Brand.subtext, fontSize: 10 }}>Activos / Inactivos / Sancionados reflejan el estado actual de la flota</Text>
+        </Text>
       </View>
 
       <Text style={styles.hint}>Usa las pestanas para ver el analisis detallado por seccion</Text>

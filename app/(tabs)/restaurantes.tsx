@@ -18,6 +18,7 @@ export default function RestaurantesScreen() {
   const [distribucion, setDistribucion] = useState<any[]>([]);
   const [porCocina,    setPorCocina]    = useState<any[]>([]);
   const [califRest,    setCalifRest]    = useState<any[]>([]);
+  const [periodo,      setPeriodo]      = useState<string>('');
   const [loading,      setLoading]      = useState(true);
   const [error,        setError]        = useState('');
   const [limitModal,          setLimitModal]          = useState(false);
@@ -52,6 +53,7 @@ export default function RestaurantesScreen() {
     ]).then(([rk, di, co, cal]) => {
       setRanking(rk); setDistribucion(di); setPorCocina(co);
       setCalifRest(Array.isArray(cal) ? cal : []);
+      setPeriodo(rk[0]?.periodo ?? di[0]?.periodo ?? '');
       setLoading(false);
     }).catch(() => { setError('Error cargando datos'); setLoading(false); });
   }, [limit]);
@@ -89,6 +91,11 @@ export default function RestaurantesScreen() {
       <View style={styles.headerBg}>
         <Text style={styles.titulo}>Restaurantes</Text>
         <Text style={styles.subtitulo}>Analisis y sugerencias</Text>
+        {periodo ? (
+          <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', marginTop: 4 }}>
+            Periodo: {periodo}
+          </Text>
+        ) : null}
       </View>
 
       {/* SECCION 1: Distribucion por ciudad */}
@@ -97,15 +104,18 @@ export default function RestaurantesScreen() {
           <View style={styles.seccionHeader}>
             <Ionicons name="map-outline" size={18} color={Brand.blue} />
             <Text style={[styles.seccionTitulo, { color: Brand.blue }]}>Distribucion por la ciudad</Text>
+            <View style={{backgroundColor:'#DCFCE7',paddingHorizontal:6,paddingVertical:2,borderRadius:4}}>
+              <Text style={{fontSize:9,color:'#166534',fontWeight:'700'}}>MES ACTUAL</Text>
+            </View>
           </View>
           <TouchableOpacity onPress={() => setModalDist(true)} style={[styles.chipSmall, { borderColor: Brand.blue }]}>
             <Ionicons name="options-outline" size={14} color={Brand.blue} />
             <Text style={[styles.chipSmallText, { color: Brand.blue }]}>Cantidad: {cantidadDist}</Text>
           </TouchableOpacity>
         </View>
-        <Text style={{ fontSize: 11, color: Brand.subtext, marginBottom: 4 }}>Cobertura geografica por colonia. Las zonas con pocos restaurantes son oportunidades de expansion para la plataforma.</Text>
+        <Text style={{ fontSize: 11, color: Brand.subtext, marginBottom: 4 }}>Pedidos recibidos por colonia durante {periodo || 'el periodo actual'}. La cantidad de restaurantes por zona es la cobertura total registrada en la plataforma.</Text>
         <Text style={{ fontSize: 11, color: Brand.blue, marginBottom: 8, fontStyle: 'italic' }}>
-          {distribucion.length} colonias en total — esta es la cobertura geografica completa registrada en la plataforma, no un limite de visualizacion.
+          {distribucion.length} colonias con actividad — ordenadas por pedidos del periodo.
         </Text>
         {distribucion.slice(0, cantidadDist).map((d, i) => (
           <View key={i} style={styles.distRow}>
@@ -138,15 +148,18 @@ export default function RestaurantesScreen() {
           <View style={styles.seccionHeader}>
             <Ionicons name="stats-chart-outline" size={18} color={Brand.accent} />
             <Text style={[styles.seccionTitulo, { color: Brand.accent }]}>Pedidos por tipo de cocina</Text>
+            <View style={{backgroundColor:'#DCFCE7',paddingHorizontal:6,paddingVertical:2,borderRadius:4}}>
+              <Text style={{fontSize:9,color:'#166534',fontWeight:'700'}}>MES ACTUAL</Text>
+            </View>
           </View>
           <TouchableOpacity onPress={() => setModalCocina(true)} style={styles.chipSmall}>
             <Ionicons name="options-outline" size={14} color={Brand.accent} />
             <Text style={styles.chipSmallText}>Cantidad: {cantidadCocina}</Text>
           </TouchableOpacity>
         </View>
-        <Text style={{ fontSize: 11, color: Brand.subtext, marginBottom: 4 }}>Participacion de cada tipo de cocina en el total de pedidos. Indica que categorias tienen mayor demanda y donde conviene incorporar nuevos restaurantes.</Text>
+        <Text style={{ fontSize: 11, color: Brand.subtext, marginBottom: 4 }}>Participacion de cada tipo de cocina en los pedidos de {periodo || 'el periodo actual'}. Indica que categorias tuvieron mayor demanda este mes.</Text>
         <Text style={{ fontSize: 11, color: Brand.accent, marginBottom: 8, fontStyle: 'italic' }}>
-          {porCocina.length} tipos de cocina en total — esta es la variedad completa de categorias que opera la plataforma en Oaxaca, no hay mas disponibles.
+          {porCocina.length} tipos de cocina con actividad en el periodo.
         </Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
           <BarChart
@@ -184,13 +197,16 @@ export default function RestaurantesScreen() {
           <View style={styles.seccionHeader}>
             <Ionicons name="trophy-outline" size={18} color={Brand.green} />
             <Text style={[styles.seccionTitulo, { color: Brand.green }]}>Ranking — Top {limit}</Text>
+            <View style={{backgroundColor:'#DCFCE7',paddingHorizontal:6,paddingVertical:2,borderRadius:4}}>
+              <Text style={{fontSize:9,color:'#166534',fontWeight:'700'}}>MES ACTUAL</Text>
+            </View>
           </View>
           <TouchableOpacity onPress={() => setLimitModal(true)} style={styles.chipSmall}>
             <Ionicons name="options-outline" size={14} color={Brand.green} />
             <Text style={[styles.chipSmallText, { color: Brand.green, borderColor: Brand.green }]}>Cantidad: {limit}</Text>
           </TouchableOpacity>
         </View>
-        <Text style={{ fontSize: 11, color: Brand.subtext, marginBottom: 8 }}>Ordenados por ingresos generados. La comision sugerida se calcula automaticamente segun la participacion de cada restaurante en las ventas totales.</Text>
+        <Text style={{ fontSize: 11, color: Brand.subtext, marginBottom: 8 }}>Ordenados por ingresos de {periodo || 'el periodo actual'}. La comision sugerida se calcula segun la participacion de cada restaurante en las ventas del mes.</Text>
 
         {ranking.map((r, i) => (
           <View key={i} style={styles.rankCard}>
@@ -227,15 +243,13 @@ export default function RestaurantesScreen() {
               </View>
             </View>
 
-            {r.sugerencia !== '' && (
+            {r.sugerencia !== '' && r.sugerencia_tipo === 'warn' && (
               <View style={[styles.alertaRow, {
-                borderLeftColor: tipoColor(r.sugerencia_tipo ?? 'ok'),
+                borderLeftColor: Brand.red,
                 marginTop: 8,
               }]}>
                 <View style={styles.alertaLabel}>
-                  <Text style={styles.alertaLabelText}>
-                    {r.sugerencia_tipo === 'warn' ? 'ATENCION' : r.sugerencia_tipo === 'alert' ? 'REVISAR' : 'BIEN'}
-                  </Text>
+                  <Text style={styles.alertaLabelText}>ATENCION</Text>
                 </View>
                 <Text style={styles.alertaTexto}>{r.sugerencia}</Text>
               </View>
@@ -247,9 +261,14 @@ export default function RestaurantesScreen() {
       {/* Calificaciones reales */}
       {califRest.length > 0 && (
         <View style={[styles.card, { backgroundColor: Brand.cardYellow }]}>
-          <View style={styles.seccionHeader}>
-            <Ionicons name="star-outline" size={18} color="#D97706" />
-            <Text style={[styles.seccionTitulo, { color: '#D97706' }]}>Calificaciones reales (reseñas verificadas)</Text>
+          <View style={[styles.seccionHeader, { justifyContent: 'space-between' }]}>
+            <View style={styles.seccionHeader}>
+              <Ionicons name="star-outline" size={18} color="#D97706" />
+              <Text style={[styles.seccionTitulo, { color: '#D97706' }]}>Calificaciones reales (reseñas verificadas)</Text>
+            </View>
+            <View style={{backgroundColor:'#DCFCE7',paddingHorizontal:6,paddingVertical:2,borderRadius:4}}>
+              <Text style={{fontSize:9,color:'#166534',fontWeight:'700'}}>MES ACTUAL</Text>
+            </View>
           </View>
           <Text style={{ fontSize: 11, color: Brand.subtext, marginBottom: 8 }}>Evaluaciones reales de usuarios tras recibir su pedido. El porcentaje positivo/negativo es mas util que el numero promedio para detectar problemas de calidad.</Text>
 

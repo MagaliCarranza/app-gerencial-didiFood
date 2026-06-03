@@ -32,6 +32,7 @@ export default function ConductoresScreen() {
   const [reactivacion,       setReactivacion]       = useState<any[]>([]);
   const [sancionados,        setSancionados]        = useState<any[]>([]);
   const [califConductores,   setCalifConductores]   = useState<any[]>([]);
+  const [periodo,            setPeriodo]            = useState<string>('');
   const [sancDetalle,        setSancDetalle]        = useState<any>(null);
   const [loading,            setLoading]            = useState(true);
   const [error,              setError]              = useState('');
@@ -81,6 +82,7 @@ export default function ConductoresScreen() {
       setSancionados(sanc);
       setCalifConductores(Array.isArray(calif) ? calif : []);
       setSancDetalle(sancDet);
+      setPeriodo(veh[0]?.periodo ?? zon[0]?.periodo ?? calif[0]?.periodo ?? '');
       setLoading(false);
     }).catch(() => { setError('Error cargando datos'); setLoading(false); });
   }, [cantidad]);
@@ -145,14 +147,24 @@ export default function ConductoresScreen() {
       <View style={styles.headerBg}>
         <Text style={styles.titulo}>Conductores</Text>
         <Text style={styles.subtitulo}>Flota y operacion</Text>
+        {periodo ? (
+          <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', marginTop: 4 }}>
+            Periodo: {periodo}
+          </Text>
+        ) : null}
       </View>
 
       {/* Resumen general */}
       {resumen && (
         <View style={[styles.card, { backgroundColor: Brand.cardPurple }]}>
-          <View style={styles.seccionHeader}>
-            <Ionicons name="people-outline" size={18} color={Brand.purple} />
-            <Text style={[styles.seccionTitulo, { color: Brand.purple }]}>Resumen de la flota</Text>
+          <View style={[styles.seccionHeader, { justifyContent: 'space-between' }]}>
+            <View style={styles.seccionHeader}>
+              <Ionicons name="people-outline" size={18} color={Brand.purple} />
+              <Text style={[styles.seccionTitulo, { color: Brand.purple }]}>Resumen de la flota</Text>
+            </View>
+            <View style={{backgroundColor:'#DBEAFE',paddingHorizontal:6,paddingVertical:2,borderRadius:4}}>
+              <Text style={{fontSize:9,color:'#1D4ED8',fontWeight:'700'}}>ESTADO ACTUAL</Text>
+            </View>
           </View>
           <Text style={styles.sub}>Estado actual de todos los conductores registrados. Solo los activos pueden recibir pedidos.</Text>
           <View style={styles.grid3}>
@@ -185,9 +197,14 @@ export default function ConductoresScreen() {
 
       {/* Por tipo de vehiculo */}
       <View style={[styles.card, { backgroundColor: Brand.cardBlue }]}>
-        <View style={styles.seccionHeader}>
-          <Ionicons name="car-outline" size={18} color={Brand.blue} />
-          <Text style={[styles.seccionTitulo, { color: Brand.blue }]}>Volumen por tipo de vehiculo</Text>
+        <View style={[styles.seccionHeader, { justifyContent: 'space-between' }]}>
+          <View style={styles.seccionHeader}>
+            <Ionicons name="car-outline" size={18} color={Brand.blue} />
+            <Text style={[styles.seccionTitulo, { color: Brand.blue }]}>Volumen por tipo de vehiculo</Text>
+          </View>
+          <View style={{backgroundColor:'#DCFCE7',paddingHorizontal:6,paddingVertical:2,borderRadius:4}}>
+            <Text style={{fontSize:9,color:'#166534',fontWeight:'700'}}>MES ACTUAL</Text>
+          </View>
         </View>
         <Text style={styles.sub}>Pedidos completados por cada tipo de vehiculo. Indica cual tiene mayor demanda y donde conviene enfocar el reclutamiento.</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
@@ -223,6 +240,9 @@ export default function ConductoresScreen() {
           <View style={styles.seccionHeader}>
             <Ionicons name="location-outline" size={18} color={Brand.green} />
             <Text style={[styles.seccionTitulo, { color: Brand.green }]}>Distribucion por zona</Text>
+            <View style={{backgroundColor:'#DCFCE7',paddingHorizontal:6,paddingVertical:2,borderRadius:4}}>
+              <Text style={{fontSize:9,color:'#166534',fontWeight:'700'}}>MES ACTUAL</Text>
+            </View>
           </View>
           <TouchableOpacity
             onPress={() => {
@@ -280,6 +300,9 @@ export default function ConductoresScreen() {
             <View style={styles.seccionHeader}>
               <Ionicons name="warning-outline" size={18} color={Brand.red} />
               <Text style={[styles.seccionTitulo, { color: Brand.red }]}>Conductores Sancionados</Text>
+              <View style={{backgroundColor:'#F1F5F9',paddingHorizontal:6,paddingVertical:2,borderRadius:4}}>
+                <Text style={{fontSize:9,color:'#64748B',fontWeight:'700'}}>HISTÓRICO</Text>
+              </View>
             </View>
             <TouchableOpacity
               onPress={() => { setCantidadSancInput(String(cantidadSanc)); setModalSanc(true); }}
@@ -351,9 +374,14 @@ export default function ConductoresScreen() {
       {/* Calificaciones reales */}
       {califConductores.length > 0 && (
         <View style={[styles.card, { backgroundColor: Brand.cardYellow }]}>
-          <View style={styles.seccionHeader}>
-            <Ionicons name="star-outline" size={18} color="#D97706" />
-            <Text style={[styles.seccionTitulo, { color: '#D97706' }]}>Calificaciones reales — Top y bottom</Text>
+          <View style={[styles.seccionHeader, { justifyContent: 'space-between' }]}>
+            <View style={styles.seccionHeader}>
+              <Ionicons name="star-outline" size={18} color="#D97706" />
+              <Text style={[styles.seccionTitulo, { color: '#D97706' }]}>Calificaciones reales — Top y bottom</Text>
+            </View>
+            <View style={{backgroundColor:'#DCFCE7',paddingHorizontal:6,paddingVertical:2,borderRadius:4}}>
+              <Text style={{fontSize:9,color:'#166534',fontWeight:'700'}}>MES ACTUAL</Text>
+            </View>
           </View>
           <Text style={styles.sub}>Calificaciones otorgadas por usuarios despues de cada entrega, distintas al promedio calculado al registro. Reflejan el desempeno real en operacion activa.</Text>
 
@@ -427,9 +455,14 @@ export default function ConductoresScreen() {
       {/* Sanciones por tipo */}
       {sancDetalle && sancDetalle.por_gravedad?.length > 0 && (
         <View style={[styles.card, { backgroundColor: '#FFF7ED' }]}>
-          <View style={styles.seccionHeader}>
-            <Ionicons name="shield-outline" size={18} color={Brand.accent} />
-            <Text style={[styles.seccionTitulo, { color: Brand.accent }]}>Sanciones por gravedad</Text>
+          <View style={[styles.seccionHeader, { justifyContent: 'space-between' }]}>
+            <View style={styles.seccionHeader}>
+              <Ionicons name="shield-outline" size={18} color={Brand.accent} />
+              <Text style={[styles.seccionTitulo, { color: Brand.accent }]}>Sanciones por gravedad</Text>
+            </View>
+            <View style={{backgroundColor:'#F1F5F9',paddingHorizontal:6,paddingVertical:2,borderRadius:4}}>
+              <Text style={{fontSize:9,color:'#64748B',fontWeight:'700'}}>HISTÓRICO</Text>
+            </View>
           </View>
           <Text style={styles.sub}>Infracciones registradas clasificadas por nivel: Alta implica suspension inmediata, Media requiere advertencia formal, Baja queda como nota en el expediente.</Text>
           <View style={styles.grid3}>
@@ -471,6 +504,9 @@ export default function ConductoresScreen() {
           <View style={styles.seccionHeader}>
             <Ionicons name="flash-outline" size={18} color={Brand.accent} />
             <Text style={[styles.seccionTitulo, { color: Brand.accent }]}>Conductores para reactivar</Text>
+            <View style={{backgroundColor:'#F1F5F9',paddingHorizontal:6,paddingVertical:2,borderRadius:4}}>
+              <Text style={{fontSize:9,color:'#64748B',fontWeight:'700'}}>HISTÓRICO</Text>
+            </View>
           </View>
           <TouchableOpacity onPress={() => setModalCant(true)} style={styles.chipSmall}>
             <Ionicons name="options-outline" size={14} color={Brand.accent} />
