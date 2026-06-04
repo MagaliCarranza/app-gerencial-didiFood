@@ -299,11 +299,6 @@ export default function MasScreen() {
     const cocLider    = porCocina[0];
     const cocSegunda  = porCocina[1];
     const cocinasBaja = porCocina.filter((c: any) => c.participacion_pct < 3).map((c: any) => c.tipo_cocina).slice(0, 4);
-    const tier1 = topRest.filter((r: any) => r.ingresos < 10000).length;
-    const tier2 = topRest.filter((r: any) => r.ingresos >= 10000 && r.ingresos < 30000).length;
-    const tier3 = topRest.filter((r: any) => r.ingresos >= 30000 && r.ingresos < 50000).length;
-    const tier4 = topRest.filter((r: any) => r.ingresos >= 50000).length;
-
     const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/>
 <style>${CSS_BASE}</style></head><body>
 <div class="hdr" style="background:#16a34a;">
@@ -384,7 +379,6 @@ ${oportunidades.horas.length > 0 ? `
     &bull; $10,001 – $30,000 en ingresos del periodo → <strong>12% de comision a DiDi Food</strong>: restaurantes consolidados con flujo estable. La reduccion incentiva mayor volumen sin afectar la rentabilidad de la plataforma.<br/>
     &bull; $30,001 – $50,000 en ingresos del periodo → <strong>10% de comision a DiDi Food</strong>: restaurantes de alto rendimiento. Comision preferencial como reconocimiento al volumen generado.<br/>
     &bull; Mas de $50,000 en ingresos del periodo → <strong>8% de comision a DiDi Food</strong>: socios estrategicos. Se pueden negociar condiciones adicionales como posicion destacada en la app o participacion en campanas.<br/>
-    ${tier1 + tier2 + tier3 + tier4 > 0 ? `<em>Distribucion en el ranking: ${tier1} restaurante${tier1 !== 1 ? 's' : ''} al 15% · ${tier2} al 12% · ${tier3} al 10% · ${tier4} al 8%.</em>` : ''}
   </div>
 </div>
 <div class="footer">DiDi Food Oaxaca · Reporte de Restaurantes · Generado el ${fecha()}</div>

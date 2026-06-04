@@ -101,7 +101,7 @@ export default function RestaurantesScreen() {
       {/* SECCION 1: Distribucion por ciudad */}
       <View style={[styles.card, { backgroundColor: Brand.cardBlue }]}>
         <View style={[styles.seccionHeader, { justifyContent: 'space-between' }]}>
-          <View style={styles.seccionHeader}>
+          <View style={[styles.seccionHeader, { flex: 1 }]}>
             <Ionicons name="map-outline" size={18} color={Brand.blue} />
             <Text style={[styles.seccionTitulo, { color: Brand.blue }]}>Distribucion por la ciudad</Text>
             <View style={{backgroundColor:'#DCFCE7',paddingHorizontal:6,paddingVertical:2,borderRadius:4}}>
@@ -145,7 +145,7 @@ export default function RestaurantesScreen() {
       {/* SECCION 2: Por tipo de cocina + marketing */}
       <View style={[styles.card, { backgroundColor: Brand.cardOrange }]}>
         <View style={[styles.seccionHeader, { justifyContent: 'space-between' }]}>
-          <View style={styles.seccionHeader}>
+          <View style={[styles.seccionHeader, { flex: 1 }]}>
             <Ionicons name="stats-chart-outline" size={18} color={Brand.accent} />
             <Text style={[styles.seccionTitulo, { color: Brand.accent }]}>Pedidos por tipo de cocina</Text>
             <View style={{backgroundColor:'#DCFCE7',paddingHorizontal:6,paddingVertical:2,borderRadius:4}}>
@@ -194,7 +194,7 @@ export default function RestaurantesScreen() {
       {/* SECCION 3: Ranking con comisiones */}
       <View style={[styles.card, { backgroundColor: Brand.cardGreen }]}>
         <View style={[styles.seccionHeader, { justifyContent: 'space-between' }]}>
-          <View style={styles.seccionHeader}>
+          <View style={[styles.seccionHeader, { flex: 1 }]}>
             <Ionicons name="trophy-outline" size={18} color={Brand.green} />
             <Text style={[styles.seccionTitulo, { color: Brand.green }]}>Ranking — Top {limit}</Text>
             <View style={{backgroundColor:'#DCFCE7',paddingHorizontal:6,paddingVertical:2,borderRadius:4}}>
@@ -262,7 +262,7 @@ export default function RestaurantesScreen() {
       {califRest.length > 0 && (
         <View style={[styles.card, { backgroundColor: Brand.cardYellow }]}>
           <View style={[styles.seccionHeader, { justifyContent: 'space-between' }]}>
-            <View style={styles.seccionHeader}>
+            <View style={[styles.seccionHeader, { flex: 1 }]}>
               <Ionicons name="star-outline" size={18} color="#D97706" />
               <Text style={[styles.seccionTitulo, { color: '#D97706' }]}>Calificaciones reales (reseñas verificadas)</Text>
             </View>
@@ -397,7 +397,7 @@ const styles = StyleSheet.create({
   subtitulo:      { fontSize: 12, color: '#94A3B8', marginTop: 2 },
   card:           { borderRadius: 16, padding: 16, margin: 16, marginBottom: 0, elevation: 2, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
   seccionHeader:  { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-  seccionTitulo:  { fontSize: 14, fontWeight: '700', color: Brand.text },
+  seccionTitulo:  { fontSize: 14, fontWeight: '700', color: Brand.text, flexShrink: 1 },
   distRow:        { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: Brand.border },
   distColonia:    { fontSize: 13, fontWeight: '600', color: Brand.text },
   distMun:        { fontSize: 11, color: Brand.subtext },

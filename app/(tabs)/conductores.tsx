@@ -158,7 +158,7 @@ export default function ConductoresScreen() {
       {resumen && (
         <View style={[styles.card, { backgroundColor: Brand.cardPurple }]}>
           <View style={[styles.seccionHeader, { justifyContent: 'space-between' }]}>
-            <View style={styles.seccionHeader}>
+            <View style={[styles.seccionHeader, { flex: 1 }]}>
               <Ionicons name="people-outline" size={18} color={Brand.purple} />
               <Text style={[styles.seccionTitulo, { color: Brand.purple }]}>Resumen de la flota</Text>
             </View>
@@ -198,7 +198,7 @@ export default function ConductoresScreen() {
       {/* Por tipo de vehiculo */}
       <View style={[styles.card, { backgroundColor: Brand.cardBlue }]}>
         <View style={[styles.seccionHeader, { justifyContent: 'space-between' }]}>
-          <View style={styles.seccionHeader}>
+          <View style={[styles.seccionHeader, { flex: 1 }]}>
             <Ionicons name="car-outline" size={18} color={Brand.blue} />
             <Text style={[styles.seccionTitulo, { color: Brand.blue }]}>Volumen por tipo de vehiculo</Text>
           </View>
@@ -237,7 +237,7 @@ export default function ConductoresScreen() {
       {/* Distribucion por zona con filtro */}
       <View style={[styles.card, { backgroundColor: Brand.cardGreen }]}>
         <View style={[styles.seccionHeader, { justifyContent: 'space-between' }]}>
-          <View style={styles.seccionHeader}>
+          <View style={[styles.seccionHeader, { flex: 1 }]}>
             <Ionicons name="location-outline" size={18} color={Brand.green} />
             <Text style={[styles.seccionTitulo, { color: Brand.green }]}>Distribucion por zona</Text>
             <View style={{backgroundColor:'#DCFCE7',paddingHorizontal:6,paddingVertical:2,borderRadius:4}}>
@@ -297,7 +297,7 @@ export default function ConductoresScreen() {
       {sancionados.length > 0 && (
         <View style={[styles.card, { backgroundColor: '#FFF1F2' }]}>
           <View style={[styles.seccionHeader, { justifyContent: 'space-between' }]}>
-            <View style={styles.seccionHeader}>
+            <View style={[styles.seccionHeader, { flex: 1 }]}>
               <Ionicons name="warning-outline" size={18} color={Brand.red} />
               <Text style={[styles.seccionTitulo, { color: Brand.red }]}>Conductores Sancionados</Text>
               <View style={{backgroundColor:'#F1F5F9',paddingHorizontal:6,paddingVertical:2,borderRadius:4}}>
@@ -375,7 +375,7 @@ export default function ConductoresScreen() {
       {califConductores.length > 0 && (
         <View style={[styles.card, { backgroundColor: Brand.cardYellow }]}>
           <View style={[styles.seccionHeader, { justifyContent: 'space-between' }]}>
-            <View style={styles.seccionHeader}>
+            <View style={[styles.seccionHeader, { flex: 1 }]}>
               <Ionicons name="star-outline" size={18} color="#D97706" />
               <Text style={[styles.seccionTitulo, { color: '#D97706' }]}>Calificaciones reales — Top y bottom</Text>
             </View>
@@ -456,7 +456,7 @@ export default function ConductoresScreen() {
       {sancDetalle && sancDetalle.por_gravedad?.length > 0 && (
         <View style={[styles.card, { backgroundColor: '#FFF7ED' }]}>
           <View style={[styles.seccionHeader, { justifyContent: 'space-between' }]}>
-            <View style={styles.seccionHeader}>
+            <View style={[styles.seccionHeader, { flex: 1 }]}>
               <Ionicons name="shield-outline" size={18} color={Brand.accent} />
               <Text style={[styles.seccionTitulo, { color: Brand.accent }]}>Sanciones por gravedad</Text>
             </View>
@@ -501,7 +501,7 @@ export default function ConductoresScreen() {
       {/* Conductores para reactivar */}
       <View style={[styles.card, { backgroundColor: Brand.cardOrange }]}>
         <View style={[styles.seccionHeader, { justifyContent: 'space-between' }]}>
-          <View style={styles.seccionHeader}>
+          <View style={[styles.seccionHeader, { flex: 1 }]}>
             <Ionicons name="flash-outline" size={18} color={Brand.accent} />
             <Text style={[styles.seccionTitulo, { color: Brand.accent }]}>Conductores para reactivar</Text>
             <View style={{backgroundColor:'#F1F5F9',paddingHorizontal:6,paddingVertical:2,borderRadius:4}}>
@@ -640,7 +640,7 @@ const styles = StyleSheet.create({
   subtitulo:       { fontSize: 12, color: '#94A3B8', marginTop: 2 },
   card:            { borderRadius: 16, padding: 16, margin: 16, marginBottom: 0, elevation: 2, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
   seccionHeader:   { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-  seccionTitulo:   { fontSize: 14, fontWeight: '700', color: Brand.text },
+  seccionTitulo:   { fontSize: 14, fontWeight: '700', color: Brand.text, flexShrink: 1 },
   grid3:           { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 12 },
   statCircle:      { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center' },
   statCircleNum:   { fontSize: 20, fontWeight: 'bold', color: '#fff' },
