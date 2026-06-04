@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator,
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Brand } from '@/constants/theme';
+import { API } from '@/constants/api';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -10,20 +11,29 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!email || !password) {
       Alert.alert('Error', 'Por favor ingresa tu email y contraseña');
       return;
     }
     setLoading(true);
-    setTimeout(() => {
-      if (email === 'didifood@gmail.com' && password === 'didi123') {
+    try {
+      const resp = await fetch(`${API}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await resp.json();
+      if (data.ok) {
         router.replace('/(tabs)');
       } else {
         Alert.alert('Error', 'Credenciales incorrectas');
         setLoading(false);
       }
-    }, 1000);
+    } catch {
+      Alert.alert('Error', 'No se pudo conectar con el servidor');
+      setLoading(false);
+    }
   };
 
   return (
@@ -66,7 +76,6 @@ export default function LoginScreen() {
           }
         </TouchableOpacity>
 
-        <Text style={styles.hint}>Usuario: didifood@gmail.com{'\n'}Contraseña: didi123</Text>
       </View>
     </View>
   );

@@ -39,6 +39,17 @@ app.get('/', (req, res) => {
   res.json({ status: 'ok', mensaje: 'API KPIs DiDi Food Oaxaca' });
 });
 
+// ─── AUTH ─────────────────────────────────────────────────────────────────────
+
+app.post('/auth/login', (req, res) => {
+  const { email, password } = req.body;
+  if (email === process.env.GERENTE_EMAIL && password === process.env.GERENTE_PASSWORD) {
+    res.json({ ok: true });
+  } else {
+    res.status(401).json({ ok: false, error: 'Credenciales incorrectas' });
+  }
+});
+
 // ─── KPI: TOTAL PEDIDOS ───────────────────────────────────────────────────────
 
 app.get('/kpi/total-pedidos', async (req, res) => {
