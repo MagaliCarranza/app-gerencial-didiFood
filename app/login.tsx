@@ -76,7 +76,8 @@ export default function LoginScreen() {
           }
         </TouchableOpacity>
 
-      </View>
+        <Text style={styles.hint}>Usuario: didifood@gmail.com{'\n'}Contraseña: didi123</Text>
+</View>
     </View>
   );
 }

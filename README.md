@@ -145,7 +145,13 @@ Esto evita mostrar datos parciales si el mes en curso todavía no tiene suficien
 ## Módulos de la aplicación
 
 ### Login (`app/login.tsx`)
-Pantalla de acceso al panel. Valida credenciales contra valores fijos (sin base de datos de usuarios). Incluye toggle para mostrar u ocultar la contraseña.
+Pantalla de acceso al panel. Valida credenciales llamando al endpoint `POST /auth/login` de la API, que las compara contra las variables de entorno `GERENTE_EMAIL` y `GERENTE_PASSWORD` definidas en `api/.env`. Incluye toggle para mostrar u ocultar la contraseña.
+
+**Credenciales de acceso:**
+```
+Usuario:    didifood@gmail.com
+Contraseña: didi123
+```
 
 ### Inicio (`app/(tabs)/index.tsx`)
 Dashboard principal con 6 KPIs del mes actual: total de pedidos, ingresos, ticket promedio, tiempo de entrega, tasa de cancelación y estado de conductores. Cada indicador muestra la variación porcentual respecto al mes anterior. Sirve como vista rápida para decisiones del día a día.
