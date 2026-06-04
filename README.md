@@ -221,8 +221,25 @@ La app detecta automáticamente la IP del servidor de desarrollo (Metro) y const
 
 ### Regenerar datos (opcional)
 
+El script de generación se encuentra en la carpeta `extraccion/`:
+
 ```bash
 python extraccion/didifood_generador.py
 ```
 
 Genera los CSVs en la misma carpeta. Luego importarlos en Supabase desde Table Editor → Import data.
+
+### APK Android
+
+El archivo instalable se encuentra en la carpeta `apk/` (excluida del repositorio por superar el límite de tamaño de GitHub). Para instalarlo en un dispositivo Android:
+
+1. Transferir el archivo `applicacion-didifood-gerencial.apk` al teléfono
+2. Habilitar **"Instalar aplicaciones de fuentes desconocidas"** en los ajustes del dispositivo
+3. Abrir el archivo e instalar
+
+La app requiere conexión a internet para comunicarse con la API desplegada en Railway (`https://kpis-app-v2-production.up.railway.app`).
+
+Para generar un nuevo APK:
+```bash
+eas build -p android --profile preview
+```
