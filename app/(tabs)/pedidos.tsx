@@ -208,14 +208,14 @@ export default function PedidosScreen() {
       </View>
 
       {/* Selector de año */}
-      <View style={styles.chips}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
         {anios.map(a => (
           <TouchableOpacity key={a} onPress={() => setAnioSel(a)}
             style={[styles.chip, anioSel === a && styles.chipActive]}>
             <Text style={[styles.chipText, anioSel === a && styles.chipTextActive]}>{a}</Text>
           </TouchableOpacity>
         ))}
-      </View>
+      </ScrollView>
 
       {/* SECCION 1: Total pedidos */}
       <View style={[styles.card, { backgroundColor: Brand.cardBlue }]}>
