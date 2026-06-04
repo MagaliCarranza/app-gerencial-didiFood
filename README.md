@@ -7,7 +7,7 @@ Panel de control gerencial para la operación de DiDi Food en Oaxaca. Permite vi
 ## Arquitectura general
 
 ```
-didifood_generador.py
+extraccion/didifood_generador.py
         │  (CSVs)
         ▼
 Supabase (PostgreSQL)
@@ -23,7 +23,7 @@ API Node.js / Express  ──► App React Native / Expo
 
 ### Extracción
 
-El archivo `didifood_generador.py` simula la operación completa de DiDi Food Oaxaca generando datos sintéticos con distribuciones realistas. Toma como entrada los parámetros de escala definidos en el código y produce archivos CSV listos para importar.
+El archivo `extraccion/didifood_generador.py` simula la operación completa de DiDi Food Oaxaca generando datos sintéticos con distribuciones realistas. Toma como entrada los parámetros de escala definidos en el código y produce archivos CSV listos para importar.
 
 **Parámetros de escala:**
 
@@ -222,7 +222,7 @@ La app detecta automáticamente la IP del servidor de desarrollo (Metro) y const
 ### Regenerar datos (opcional)
 
 ```bash
-python didifood_generador.py
+python extraccion/didifood_generador.py
 ```
 
 Genera los CSVs en la misma carpeta. Luego importarlos en Supabase desde Table Editor → Import data.
