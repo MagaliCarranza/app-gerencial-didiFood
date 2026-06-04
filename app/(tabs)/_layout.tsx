@@ -50,10 +50,6 @@ export default function TabLayout() {
         options={{ title: 'Más', tabBarIcon: icon('grid-outline') }}
       />
 
-      {/* Pantallas ocultas del proyecto anterior */}
-      <Tabs.Screen name="explore"  options={{ href: null }} />
-      <Tabs.Screen name="graficas" options={{ href: null }} />
-      <Tabs.Screen name="reporte"  options={{ href: null }} />
     </Tabs>
   );
 }
