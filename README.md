@@ -1,7 +1,8 @@
-# DiDi Food Oaxaca — Dashboard de KPIs
+# DiDi Food Oaxaca 
 
-Panel de control gerencial para la operación de DiDi Food en Oaxaca. Permite visualizar KPIs operativos por periodo, analizar restaurantes, conductores, productos y usuarios, y generar reportes PDF por área.
+Aplicación gerencial para la operación de DiDi Food en Oaxaca. Permite visualizar KPIs operativos por periodo, analizar restaurantes, conductores, productos y usuarios, y generar reportes PDF por área.
 
+Es una aplicacion de muestra para el comportamiendo de las kpis.
 ---
 
 ## Arquitectura general
@@ -210,36 +211,14 @@ DATABASE_URL=postgresql://...
 PORT=3000
 ```
 
-### App
-
-```bash
-npm install
-npx expo start
-```
-
-La app detecta automáticamente la IP del servidor de desarrollo (Metro) y construye la URL de la API como `http://<ip-local>:3000`. Para usar en dispositivo físico, asegurarse de que el teléfono y la computadora estén en la misma red WiFi.
-
-### Regenerar datos (opcional)
-
-El script de generación se encuentra en la carpeta `extraccion/`:
-
-```bash
-python extraccion/didifood_generador.py
-```
-
-Genera los CSVs en la misma carpeta. Luego importarlos en Supabase desde Table Editor → Import data.
-
 ### APK Android
 
-El archivo instalable se encuentra en la carpeta `apk/` (excluida del repositorio por superar el límite de tamaño de GitHub). Para instalarlo en un dispositivo Android:
+El archivo instalable se encuentra en la carpeta `apk/` (comprimido). Para instalarlo en un dispositivo Android:
 
 1. Transferir el archivo `applicacion-didifood-gerencial.apk` al teléfono
 2. Habilitar **"Instalar aplicaciones de fuentes desconocidas"** en los ajustes del dispositivo
 3. Abrir el archivo e instalar
 
-La app requiere conexión a internet para comunicarse con la API desplegada en Railway (`https://kpis-app-v2-production.up.railway.app`).
+La app requiere conexión a internet para comunicarse con la API desplegada en Railway.
 
-Para generar un nuevo APK:
-```bash
-eas build -p android --profile preview
-```
+
